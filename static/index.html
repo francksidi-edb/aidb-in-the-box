@@ -1,0 +1,491 @@
+<title>AI in the Box</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@500;600;700&family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: app shell like the Data & AI Manager mockup. Dark top bar, grouped left nav, one working pane. */
+:root{
+  --bg:#EEF4F6; --surface:#FFFFFF; --fg:#1E3D4A; --muted:#567F8D; --line:#D3E1E6; --frost:#E8F2F5;
+  --bar:#1E3D4A; --bar-fg:#FFFFFF; --bar-soft:#28495A; --bar-line:#3B6070; --accent:#28495A; --mist:#A8C2CA; --gold:#E7C568;
+  --ok:#23765A; --info:#2D6A8A; --warn:#9A6200; --mute:#5E7480; --bad:#A33A3A;
+  --f-head:'Roboto Condensed',system-ui,sans-serif; --f-body:'Roboto',system-ui,sans-serif; --f-mono:'Roboto Mono',ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12262E; --surface:#1A343F; --fg:#E8F2F5; --muted:#A8C2CA; --line:#2C4C59; --frost:#223F4B;
+  --bar:#0E1E25; --bar-soft:#1A343F; --bar-line:#2C4C59; --accent:#A8C2CA;
+  --ok:#5FC49C; --info:#78B8D8; --warn:#E7B24F; --mute:#93AAB5; --bad:#E58A8A; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12262E; --surface:#1A343F; --fg:#E8F2F5; --muted:#A8C2CA; --line:#2C4C59; --frost:#223F4B;
+  --bar:#0E1E25; --bar-soft:#1A343F; --bar-line:#2C4C59; --accent:#A8C2CA;
+  --ok:#5FC49C; --info:#78B8D8; --warn:#E7B24F; --mute:#93AAB5; --bad:#E58A8A; color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 var(--f-body)}
+a{color:var(--accent)}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.top{background:var(--bar);color:var(--bar-fg);padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px}
+.brand{display:flex;align-items:center;gap:14px;font-family:var(--f-head);white-space:nowrap}
+.brand img{height:26px;width:auto;display:block}
+.brand span{color:#fff;font-size:19px;font-weight:600;padding-left:14px;border-left:1px solid var(--bar-line);line-height:26px}
+.search{flex:1 1 260px;max-width:520px;display:flex;align-items:center;background:var(--bar-soft);border:1px solid var(--bar-line);border-radius:6px;padding:0 12px;height:36px}
+.search input{flex:1;min-width:0;background:transparent;border:0;outline:none;color:#fff}
+.search input::placeholder{color:var(--mist)}
+.connpill{margin-left:auto;background:var(--bar-soft);border:1px solid var(--bar-line);color:var(--bar-fg);border-radius:999px;padding:4px 14px;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.connpill i{width:8px;height:8px;border-radius:50%;background:var(--mist)}
+.connpill.ok i{background:#5FC49C}.connpill.bad i{background:#E58A8A}
+.frame{width:100%;height:calc(100vh - 190px);min-height:480px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.md h1,.md h2,.md h3{margin:16px 0 6px}.md p{margin:6px 0}.md ul{margin:6px 0;padding-left:20px}.md table{min-width:0;margin:8px 0}.md th,.md td{padding:5px 10px;border:1px solid var(--line)}
+pre.code{position:relative;margin:8px 0;padding:12px 14px;background:var(--frost);border:1px solid var(--line);border-radius:8px;overflow-x:auto;font:12.5px/1.5 var(--f-mono);white-space:pre}
+pre.code button{position:absolute;top:6px;right:6px;border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:2px 8px;font-size:12px;cursor:pointer}
+.btn{display:inline-block;background:var(--accent);color:var(--surface);border:0;border-radius:6px;padding:6px 14px;cursor:pointer;text-decoration:none;font-size:13px}
+.btn.alt{background:var(--surface);color:var(--fg);border:1px solid var(--line)}
+.ck{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;align-items:baseline}
+.shell{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:calc(100vh - 56px)}
+nav.side{background:var(--surface);border-right:1px solid var(--line);padding:6px 10px;padding-left:max(10px,env(safe-area-inset-left,0px))}
+.navgroup{margin-bottom:3px}
+.navhead,.navitem{display:flex;align-items:center;gap:10px;width:100%;border-radius:6px;text-decoration:none;color:var(--accent);cursor:pointer}
+.navhead{min-height:30px;padding:3px 10px;font:600 15px var(--f-head)}
+.navitem{min-height:26px;padding:2px 10px 2px 26px;gap:9px;font:400 13.5px var(--f-body)}
+.navhead:hover,.navitem:hover{background:var(--frost)}
+.navhead.within{color:var(--fg)}
+.navhead.on,.navitem.on{background:var(--accent);color:var(--surface);box-shadow:inset 3px 0 0 var(--gold)}
+.navitem span{margin-left:auto;font:12px var(--f-mono);opacity:.7}
+.navitem svg,.navhead svg{flex:none}
+main{min-width:0;padding-block:24px 56px;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1120px}
+h1{font:600 30px/1.15 var(--f-head);margin:0 0 6px;text-wrap:balance}
+h2{font:600 20px/1.2 var(--f-head);margin:32px 0 10px}
+h3{font:600 16px/1.25 var(--f-head);margin:0}
+.lead{color:var(--muted);max-width:68ch;margin:0 0 20px}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px;text-align:left;cursor:pointer;display:block;width:100%}
+.tile:hover{border-color:var(--muted)}
+.tile b{display:block;font:600 30px/1.1 var(--f-head);font-variant-numeric:tabular-nums}
+.tile span{color:var(--muted);font-size:13px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px}
+.pad{padding:16px 18px}
+.layers{display:grid;gap:8px}
+.layer{display:grid;grid-template-columns:150px minmax(0,1fr);gap:12px;padding:12px 14px;background:var(--surface);border:1px solid var(--line);border-radius:8px}
+.layer>div:first-child{font:600 15px var(--f-head)}
+.layer>div:first-child small{display:block;font:400 12px var(--f-body);color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--frost);border-radius:999px;padding:2px 10px 2px 8px;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.chip:hover{border-color:var(--muted)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--c,var(--mute));flex:none}
+.pill{display:inline-block;padding:1px 9px;border-radius:999px;font-size:12px;font-weight:500;color:var(--c);background:color-mix(in srgb,var(--c) 14%,transparent);white-space:nowrap}
+.s-Complete{--c:var(--ok)}.s-Accepted{--c:var(--info)}.s-Excluded,.s-None{--c:var(--mute)}.s-Later,.s-Hold{--c:var(--warn)}.s-Idea{--c:var(--muted)}
+.tag{display:inline-block;font:500 11.5px var(--f-mono);padding:1px 7px;border-radius:4px;background:var(--frost);color:var(--fg);border:1px solid var(--line)}
+.tag.need{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,var(--line))}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.toolbar select,.toolbar input{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:6px 10px;height:34px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:3px 12px;cursor:pointer;font-size:13px}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--surface);border-color:var(--accent)}
+.tw{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;min-width:760px}
+th{font:600 12px var(--f-head);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);background:var(--frost);white-space:nowrap}
+td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+td .d{color:var(--muted);font-size:13px;margin-top:2px;max-width:62ch}
+td.id,.mono{font-family:var(--f-mono);font-size:12.5px}
+.demos{display:grid;gap:12px}
+.demo{background:var(--surface);border:1px solid var(--line);border-radius:8px}
+.demo>button{all:unset;box-sizing:border-box;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 16px;width:100%;padding:14px 18px;cursor:pointer}
+.demo>button:focus-visible{outline:2px solid var(--gold);outline-offset:-2px}
+.demo>button p{margin:2px 0 0;color:var(--muted)}
+.demo .body{padding:0 18px 18px;display:none;gap:18px;grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}
+.demo.open .body{display:grid}
+.demo h4{font:600 12px var(--f-head);letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.demo ul{margin:0;padding-left:18px}
+.demo li{margin:2px 0}
+.demo code,code{font:12.5px var(--f-mono);background:var(--frost);padding:1px 5px;border-radius:4px}
+.q{border-left:3px solid var(--line);padding:2px 10px;margin:4px 0;font-style:normal}
+.note{border:1px solid color-mix(in srgb,var(--warn) 40%,var(--line));background:color-mix(in srgb,var(--warn) 8%,var(--surface));border-radius:8px;padding:12px 16px;margin:12px 0}
+.note b{color:var(--warn)}
+.two{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+.empty{padding:28px;text-align:center;color:var(--muted)}
+@media (max-width:760px){
+  .shell{grid-template-columns:1fr}
+  nav.side{border-right:0;border-bottom:1px solid var(--line);display:flex;overflow-x:auto;gap:4px;padding:8px 12px;padding-left:max(12px,env(safe-area-inset-left,0px))}
+  .navgroup{display:contents}
+  .navgroup>.navhead:not(.solo){display:none}
+  .navhead,.navitem{width:auto;white-space:nowrap;padding:4px 12px;font:500 14px var(--f-body)}
+  .navitem svg,.navhead svg{display:none}
+  .layer{grid-template-columns:1fr}
+  h1{font-size:26px}
+}
+@media (prefers-reduced-motion:no-preference){.tile,.chip{transition:border-color .15s}}
+.frm{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:12px 0}
+.frm label{display:grid;gap:4px;font-size:12px;color:var(--muted)}
+.frm input,.frm select{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:7px 10px;height:36px;color:var(--fg);min-width:0}
+.chk{display:flex;gap:8px;align-items:center;margin:8px 0;font-size:13px}
+pre.log{background:#0f2630;color:#d7e6ea;border-radius:8px;padding:12px 14px;max-height:340px;overflow:auto;font:12px/1.5 'Roboto Mono',monospace;white-space:pre-wrap;margin:12px 0 0}
+.res{margin-top:10px;font-size:13px}.res.ok{color:var(--ok,#2f7d4f)}.res.err{color:var(--warn)}
+</style>
+
+<header class="top">
+  <div class="brand"><img src="static/logo.png" alt="EDB Postgres AI"><span>AI in the Box</span></div>
+  <label class="search" aria-label="Search the inventory"><input id="gq" type="search" placeholder="Search items, demos, models" autocomplete="off"></label>
+  <button class="connpill" id="conn" aria-label="Open system check">Checking database…</button>
+</header>
+<div class="shell">
+  <nav class="side" id="nav" aria-label="Sections"></nav>
+  <main><div class="wrap" id="view"></div></main>
+</div>
+
+<script>
+let S,R,D,M,Q,NB;
+/* ---------- helpers ---------- */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const cls=k=>({C:'Complete',A:'Accepted',X:'Excluded',L:'Later',H:'Hold',I:'Idea',N:'None'}[k]);
+const pill=k=>`<span class="pill s-${cls(k)}">${S[k]}</span>`;
+const count=f=>R.filter(f).length;
+const norm=c=>c==='Model'?'Models':c;
+const state={q:'',st:'all',cat:'all',tg:'all',view:'overview'};
+const agreed=r=>r.st==='A'||r.st==='C';
+
+/* ---------- views ---------- */
+function overview(){
+  const ag=count(agreed), comp=count(r=>r.st==='C'), acc=count(r=>r.st==='A');
+  const open=Q.filter(q=>q.s==='Open').length;
+  const noOwner=count(r=>agreed(r)&&!r.owner);
+  const layers=[
+    ['Apps and front end','What a buyer opens first',['Apps and tools','GUI']],
+    ['Agents','Prebuilt, conversational',['Agents']],
+    ['Skills','Reusable abilities',['Skills']],
+    ['Governance','Policy, audit, RBAC, PII',['Governance']],
+    ['Agent memory','Seeded context and savings',['Agent memory']],
+    ['Models','Local, classical and external',['Model','In-db models']],
+    ['Search and extensions','pgvector, Vector Plus, BM25, PGFS, AGE',['Extensions']],
+    ['Data and documents','Sample content',['Sample data','Documents']],
+    ['Adoption and docs','Counting, feedback, guide',['Adoption tracking','Documentation']]
+  ];
+  const lay=layers.map(([t,s,cats])=>{
+    const items=R.filter(r=>cats.includes(r.cat.replace('Apps and Tools','Apps and tools')));
+    return `<div class="layer"><div>${t}<small>${s}</small></div><div class="chips">${items.map(r=>`<button class="chip" data-id="${r.id}" title="${esc(S[r.st])}"><span class="dot s-${cls(r.st)}"></span>${esc(r.item)}</button>`).join('')}</div></div>`;
+  }).join('');
+  return `<h1>AI in the Box</h1>
+  <p class="lead">One Postgres with AIDB, vector and hybrid search, agents, governance and MCP, packaged for a buyer to try in minutes. This page lists everything proposed for the image, the nine demo notebooks, and what is still undecided.</p>
+  <div class="grid">
+    <button class="tile" data-go="inventory" data-f="agreed"><b>${ag}</b><span>agreed items of ${R.length} (${comp} complete, ${acc} accepted)</span></button>
+    <button class="tile" data-go="demos"><b>${D.length}</b><span>demo notebooks from Jon</span></button>
+    <button class="tile" data-go="models"><b>${M.length}</b><span>models on the Models tab</span></button>
+    <button class="tile" data-go="decisions"><b>${open}</b><span>open questions of ${Q.length}</span></button>
+    <button class="tile" data-go="inventory" data-f="noowner"><b>${noOwner}</b><span>agreed items with no owner</span></button>
+  </div>
+  <h2>What is in the box</h2>
+  <p class="lead">Each chip is one row of the sheet. The dot shows its status. Select a chip to open its row.</p>
+  <div class="seg" style="margin-bottom:10px" aria-label="Legend">${['C','A','L','H','I','X','N'].map(k=>`<span class="chip" style="cursor:default"><span class="dot s-${cls(k)}"></span>${S[k]}</span>`).join('')}</div>
+  <div class="layers">${lay}</div>
+  <h2>Target and delivery</h2>
+  <div class="two">
+    <div class="panel pad"><h3>Target</h3><p style="margin:6px 0 0">${count(r=>r.target==='Both')} rows say <b>Both</b> (Docker and AWS). ${count(r=>!r.target)} rows leave it blank. No row says Docker or AWS alone.</p></div>
+    <div class="panel pad"><h3>Delivery</h3><p style="margin:6px 0 0">${count(r=>r.del==='Bundled in image')} bundled in image, ${count(r=>r.del==='Customer supplies')} customer supplies, ${count(r=>r.del==='To decide')} to decide, ${count(r=>!r.del)} blank. Jon's answer to question 1 may replace "image" with an open-source repo the buyer builds from.</p></div>
+  </div>`;
+}
+
+
+let jupTimer=null;
+function jupPanel(){
+  setTimeout(()=>jupLoad(),0);
+  return `<section class="panel pad" id="jup" style="margin:14px 0">
+    <b>Run the notebooks in JupyterLab</b> <span id="jup-line" style="color:var(--muted)">checking…</span>
+    <p style="color:var(--muted);font-size:12px;margin:6px 0 10px">Starts JupyterLab from this app (installing it on first use). Your notebooks are copied to <code>notebooks-run/</code> and connect with the same database settings as the Connect page, so you edit and run them there; the originals stay untouched.</p>
+    <button class="btn" id="jup-start">Start Jupyter</button> <button class="btn alt" id="jup-stop" hidden>Stop</button> <a class="btn" id="jup-open" hidden target="_blank" rel="noopener">Open JupyterLab</a>
+    <pre class="log" id="jup-log" hidden></pre><div class="res" id="jup-res" role="status"></div></section>`;
+}
+function jupLoad(){
+  clearTimeout(jupTimer);
+  fetch('/api/jupyter').then(r=>r.json()).then(j=>{
+    const line=$('#jup-line'); if(!line){return;}
+    const base='http://'+location.hostname+':'+j.port;
+    const run=j.state==='running';
+    line.textContent={stopped:'stopped',installing:'installing JupyterLab (first time, a few minutes)…',starting:'starting…',running:'running on port '+j.port,failed:'failed'}[j.state]||j.state;
+    $('#jup-start').hidden=j.state!=='stopped'&&j.state!=='failed'; $('#jup-stop').hidden=!run;
+    const open=$('#jup-open'); open.hidden=!run; if(run) open.href=base+'/lab?token='+encodeURIComponent(j.token);
+    const lg=$('#jup-log'); lg.hidden=!j.log; lg.textContent=j.log||'';
+    const res=$('#jup-res'); res.className='res '+(j.state==='failed'?'err':'ok'); res.textContent=j.error||(run&&location.hostname!=='127.0.0.1'&&location.hostname!=='localhost'?'Port '+j.port+' must be open in the firewall or security group.':'');
+    document.querySelectorAll('.jup-nb').forEach(a=>{a.hidden=!run; if(run)a.href=base+'/lab/tree/'+encodeURIComponent(a.dataset.f)+'?token='+encodeURIComponent(j.token);});
+    $('#jup-start').onclick=()=>{ $('#jup-res').textContent=''; fetch('/api/jupyter',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'start'})}).then(()=>jupLoad()); };
+    $('#jup-stop').onclick=()=>fetch('/api/jupyter',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'stop'})}).then(()=>jupLoad());
+    if(j.state==='installing'||j.state==='starting') jupTimer=setTimeout(jupLoad,2000);
+  }).catch(()=>{});
+}
+function demos(){
+  return `<h1>Demo notebooks</h1>
+  <p class="lead">The ${D.length} notebooks supplied from <a href="${NB}" target="_blank" rel="noopener">aidb-quickstarts/notebooks</a>. Each one registers a model, builds its own sample data and runs real questions. Select a demo to see what it needs from the box.</p>
+  ${jupPanel()}
+  <div class="demos">${D.map((d,i)=>`<section class="demo" id="demo-${i}">
+    <button aria-expanded="false" data-demo="${i}">
+      <div><h3>${esc(d.n)}</h3><p>${esc(d.blurb)}</p></div>
+      <div class="chips" style="align-content:start;justify-content:flex-end">${d.ids.map(x=>`<span class="tag">${x}</span>`).join('')}</div>
+    </button>
+    <div class="body">
+      <div><h4>Needs from the box</h4>
+        <div class="chips">
+          ${d.key?'<span class="tag need">Claude API key</span>':'<span class="tag">No LLM key in database</span>'}
+          <span class="tag ${d.net.startsWith('None')?'':'need'}">Network: ${esc(d.net)}</span>
+          ${d.restart?'<span class="tag need">Database restart</span>':''}
+          ${d.files?'<span class="tag need">Files to ship</span>':''}
+        </div>
+        <h4 style="margin-top:14px">Sample data</h4><div>${esc(d.data)}</div>
+        <h4 style="margin-top:14px">What you learn</h4><div>${esc(d.learn)}</div></div>
+      <div><h4>AIDB features used</h4><ul>${d.how.map(h=>`<li>${esc(h)}</li>`).join('')}</ul></div>
+      <div><h4>Questions to try</h4>${d.q.map(q=>`<div class="q">${esc(q)}</div>`).join('')}
+        <p style="margin:12px 0 8px;color:var(--muted);font-size:13px">File: <code>${esc(d.f)}</code></p>
+        <a class="btn" href="#read-${i}">Read notebook</a> <a class="btn alt" href="/notebooks/${encodeURIComponent(d.f)}">Download .ipynb</a> <a class="btn alt jup-nb" data-f="${esc(d.f)}" hidden target="_blank" rel="noopener">Open in Jupyter</a></div>
+    </div></section>`).join('')}</div>
+  <div class="note"><b>No notebook supplied</b> for two Complete items: C-47 Agent Hub and C-49 Document Validation app. C-49 is listed under Documents Validation as its companion. C-39 Agent with tools is matched to RAG over Documents by content, so confirm that match.</div>`;
+}
+
+function inventory(){
+  const cats=[...new Set(R.map(r=>norm(r.cat.replace('Apps and Tools','Apps and tools'))))];
+  let rows=R.filter(r=>{
+    if(state.f==='agreed'&&!agreed(r))return false;
+    if(state.f==='noowner'&&!(agreed(r)&&!r.owner))return false;
+    if(state.st!=='all'&&r.st!==state.st)return false;
+    if(state.cat!=='all'&&norm(r.cat.replace('Apps and Tools','Apps and tools'))!==state.cat)return false;
+    if(state.tg!=='all'&&(r.target||'Blank')!==state.tg)return false;
+    const q=state.q.trim().toLowerCase();
+    if(q&&![r.id,r.item,r.d,r.cat,r.owner,r.note].join(' ').toLowerCase().includes(q))return false;
+    return true;});
+  const stBtn=(k,l)=>`<button data-st="${k}" aria-pressed="${state.st===k}">${l}</button>`;
+  return `<h1>Inventory</h1>
+  <p class="lead">All ${R.length} rows of the Image contents tab. Status values are the ones typed in the sheet, which include Complete, Excluded, On-hold and For later phases beyond the Lists tab.</p>
+  ${state.f?`<div class="note" style="margin-top:0">Showing ${state.f==='agreed'?'agreed (Complete or Accepted)':'agreed items with no owner'}. <button data-clearf style="all:unset;cursor:pointer;text-decoration:underline">Clear</button></div>`:''}
+  <div class="toolbar">
+    <div class="seg">${stBtn('all','All')}${Object.keys(S).map(k=>stBtn(k,S[k]+' ('+count(r=>r.st===k)+')')).join('')}</div>
+  </div>
+  <div class="toolbar">
+    <input id="iq" type="search" placeholder="Filter rows" value="${esc(state.q)}" aria-label="Filter rows">
+    <select id="icat" aria-label="Category"><option value="all">All categories</option>${cats.map(c=>`<option ${state.cat===c?'selected':''}>${esc(c)}</option>`).join('')}</select>
+    <select id="itg" aria-label="Target">${['all','Both','Blank'].map(c=>`<option value="${c}" ${state.tg===c?'selected':''}>${c==='all'?'Any target':c}</option>`).join('')}</select>
+    <span class="mono" style="color:var(--muted)">${rows.length} of ${R.length}</span>
+  </div>
+  <div class="tw"><table><thead><tr><th>ID</th><th>Item</th><th>Category</th><th>Status</th><th>Target</th><th>Delivery</th><th>Phase</th><th>Owner</th></tr></thead><tbody>
+  ${rows.map(r=>`<tr id="row-${r.id}"><td class="id">${r.id}</td><td><b>${esc(r.item)}</b><div class="d">${esc(r.d)}</div>${r.note?`<div class="d"><i>${esc(r.note)}</i></div>`:''}</td><td>${esc(r.cat)}</td><td>${pill(r.st)}</td><td>${esc(r.target)||'<span style="color:var(--muted)">blank</span>'}</td><td>${esc(r.del)||'<span style="color:var(--muted)">blank</span>'}</td><td>${esc(r.phase)||'<span style="color:var(--muted)">blank</span>'}</td><td>${esc(r.owner)}</td></tr>`).join('')}
+  </tbody></table>${rows.length?'':'<div class="empty">No rows match. Clear a filter.</div>'}</div>`;
+}
+
+function data(){
+  return `<h1>Data the box needs</h1>
+  <p class="lead">Every notebook builds or downloads its own sample data. The sheet excludes a shared sample schema (C-01) and pre-ingested documents (C-02), so these are the datasets the box has to carry or fetch.</p>
+  <div class="tw"><table><thead><tr><th>Used by</th><th>Dataset</th><th>Network at setup</th><th>Other needs</th></tr></thead><tbody>
+  ${D.map(d=>`<tr><td><b>${esc(d.n)}</b></td><td>${esc(d.data)}</td><td>${esc(d.net)}</td><td>${[d.restart?'Database restart':'',d.files?'PDFs staged in a PGFS folder':'',d.key?'Claude API key':''].filter(Boolean).join(', ')||'None'}</td></tr>`).join('')}
+  </tbody></table></div>
+  <div class="note"><b>Offline use.</b> Four notebooks download from Hugging Face or irs.gov (Governance, SQL Summarization, RAG over Documents and MCP). A box that starts in minutes with no network needs these staged. Documents Validation already expects its 18 PDFs on disk but does not create them.</div>`;
+}
+
+function models(){
+  const types=[...new Set(M.map(m=>m.t))];
+  return `<h1>Models</h1>
+  <p class="lead">${M.length} rows on the Models tab. Every notebook registers Claude Sonnet 5 through <code>anthropic_messages</code> with the buyer's key. The only local model any notebook uses is <code>bge-small-en-v1.5-f16</code> for embeddings.</p>
+  ${types.map(t=>`<h2 style="font-size:17px">${t} <span class="mono" style="color:var(--muted)">${M.filter(m=>m.t===t).length}</span></h2>
+  <div class="tw"><table><thead><tr><th>Model</th><th>AIDB provider</th><th>Delivery</th><th>Status</th><th>Notes</th></tr></thead><tbody>
+  ${M.filter(m=>m.t===t).map(m=>`<tr><td><b>${esc(m.m)}</b></td><td class="mono">${esc(m.p)}</td><td>${esc(m.del)}</td><td><span class="pill s-Idea">${m.st}</span></td><td>${esc(m.n)}</td></tr>`).join('')}
+  </tbody></table></div>`).join('')}`;
+}
+
+function decisions(){
+  const gaps=[
+    ['Summary tab counts are stale','It shows 24 ideas, 30 on target Both and 38 by category. The Image contents tab has '+R.length+' rows. It shows 16 models; the Models tab has '+M.length+' (the 3 classical models are not counted). Numbers on this page are counted from the rows.'],
+    ['Status values outside the Lists tab','Complete, Excluded, On-hold and For later phases are used in rows but are not in the dropdown list. Under review, Rejected and Built are listed but unused.'],
+    ['Rows with no status','C-09, C-10, C-11 and C-12 have no target, delivery, phase or status.'],
+    ['Agreed items with no owner',count(r=>agreed(r)&&!r.owner)+' of '+count(agreed)+' Complete or Accepted rows have no owner. The Governance block (C-30 to C-37) is owned by Lucie.'],
+    ['Document Q&A conflicts with itself','C-04 says it answers with the in-db SLM, and its note says use external models only. Question 3 says Claude for the LLM. Question 4 on the phi-4 class model is unanswered.'],
+    ['Models tab is all "Idea"','Question 3 settles local embeddings plus Claude, but no model row has moved on, and 16 of 19 delivery cells say To decide or Customer supplies.'],
+    ['Notebooks assume a specific host','The MCP demo uses PostgreSQL 18 paths (/var/lib/pgsql/18, /usr/pgsql-18) and macOS Claude Desktop. Documents Validation expects PDFs under /tmp/pgfs/validation.'],
+    ['Governance items vs the Governance demo','C-30 to C-37 (guardrails, audit, PII, dashboard) have no demo. The Governance notebook covers roles and purposes only (C-45, plus part of C-32).']
+  ];
+  return `<h1>Open questions and gaps</h1>
+  <p class="lead">${Q.filter(q=>q.s==='Open').length} of ${Q.length} questions are open. Some have an answer typed in but are still marked Open in the sheet.</p>
+  <div class="tw"><table><thead><tr><th>#</th><th>Question</th><th>Owner</th><th>Answer so far</th><th>Status</th></tr></thead><tbody>
+  ${Q.map(q=>`<tr><td class="id">${q.n}</td><td>${esc(q.q)}</td><td>${esc(q.o)}</td><td>${esc(q.a)||'<span style="color:var(--muted)">none</span>'}</td><td><span class="pill ${q.s==='Closed'?'s-Complete':'s-Hold'}">${q.s}</span></td></tr>`).join('')}
+  </tbody></table></div>
+  <h2>Gaps found while combining the sheet and the notebooks</h2>
+  <div class="two">${gaps.map(g=>`<div class="panel pad"><h3>${esc(g[0])}</h3><p style="margin:6px 0 0">${esc(g[1])}</p></div>`).join('')}</div>`;
+}
+
+function md(t){
+  const inl=x=>esc(x).replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>').replace(/\*([^*]+)\*/g,'<i>$1</i>');
+  const L=t.split('\n'),o=[];let i=0;
+  while(i<L.length){const l=L[i];
+    if(l.startsWith('```')){const c=[];i++;while(i<L.length&&!L[i].startsWith('```')){c.push(L[i]);i++}i++;o.push('<pre class="code">'+esc(c.join('\n'))+'</pre>');continue}
+    const h=l.match(/^(#{1,4})\s+(.*)/);if(h){o.push('<h'+Math.min(h[1].length+1,4)+'>'+inl(h[2])+'</h'+Math.min(h[1].length+1,4)+'>');i++;continue}
+    if(/^\s*\|/.test(l)&&/^\s*\|[\s:|-]+\|\s*$/.test(L[i+1]||'')){const rows=[l];i+=2;while(i<L.length&&/^\s*\|/.test(L[i])){rows.push(L[i]);i++}
+      const cells=r=>r.trim().replace(/^\||\|$/g,'').split('|').map(c=>c.trim());
+      o.push('<div class="tw"><table><thead><tr>'+cells(rows[0]).map(c=>'<th>'+inl(c)+'</th>').join('')+'</tr></thead><tbody>'+rows.slice(1).map(r=>'<tr>'+cells(r).map(c=>'<td>'+inl(c)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>');continue}
+    if(/^\s*[-*]\s+/.test(l)){const it=[];while(i<L.length&&/^\s*[-*]\s+/.test(L[i])){it.push(L[i].replace(/^\s*[-*]\s+/,''));i++}o.push('<ul>'+it.map(x=>'<li>'+inl(x)+'</li>').join('')+'</ul>');continue}
+    if(!l.trim()){i++;continue}
+    const p=[];while(i<L.length&&L[i].trim()&&!/^(```|#{1,4}\s|\s*[-*]\s)/.test(L[i])){p.push(L[i]);i++}o.push('<p>'+inl(p.join(' '))+'</p>');}
+  return o.join('');
+}
+function reader(){
+  const d=D[state.nb]; if(!d) return '<div class="empty">Unknown notebook.</div>';
+  fetch('/api/notebooks/'+encodeURIComponent(d.f)).then(r=>r.json()).then(nb=>{
+    if(state.view!=='reader'||D[state.nb]!==d)return;
+    $('#nbbody').innerHTML=nb.cells.map(c=>c.type==='markdown'?'<div class="md">'+md(c.source)+'</div>':'<pre class="code"><button data-copy>Copy</button>'+esc(c.source)+'</pre>').join('');
+    $('#nbbody').querySelectorAll('[data-copy]').forEach(b=>b.onclick=()=>{const t=b.parentElement.innerText.replace(/^Copy\n?/,'');navigator.clipboard?.writeText(t).then(()=>{b.textContent='Copied';setTimeout(()=>b.textContent='Copy',1200)},()=>{})});
+  }).catch(()=>{$('#nbbody').innerHTML='<div class="empty">Could not load the notebook.</div>'});
+  return `<p><a href="#demos">&larr; Demo notebooks</a></p><h1>${esc(d.n)}</h1>
+  <p class="lead">${esc(d.blurb)} <span class="tag">${esc(d.f)}</span></p>
+  <p><a class="btn alt" href="/notebooks/${encodeURIComponent(d.f)}">Download .ipynb</a> <a class="btn alt jup-nb" data-f="${esc(d.f)}" hidden target="_blank" rel="noopener">Open in Jupyter</a></p>
+  ${jupPanel()}
+  <div id="nbbody" class="panel pad">Loading…</div>`;
+}
+function showcase(){
+  return `<h1>AIDB Introspector</h1>
+  <p class="lead">Browse everything AIDB has in this database: models, agents, tools, knowledge bases, pipelines, functions and settings, with a read-only SQL console. It uses the connection saved on the Connect page.</p>
+  <p><a class="btn alt" href="/introspect/" target="_blank" rel="noopener">Open full screen</a></p>
+  <iframe class="frame" title="AIDB Introspector" src="/introspect/?embed=1"></iframe>`;
+}
+function status(){
+  fetch('/api/status').then(r=>r.json()).then(s=>{ if(state.view!=='status')return; $('#statusbody').innerHTML=statusHtml(s); const eb=$('#enable-all'); if(eb) eb.onclick=()=>{ const r=$('#en-res'); eb.disabled=true; r.className='res ok'; r.textContent='Working… Postgres may restart.';
+      fetch('/api/enable',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}).then(x=>x.json()).then(j=>{
+        const lines=(j.steps||[]).concat((j.results||[]).map(x=>x.name+': '+(x.ok?'enabled':x.detail)));
+        r.className='res '+(j.ok?'ok':'err'); r.textContent=(j.error?j.error+'\n':'')+lines.join('\n'); r.style.whiteSpace='pre-line';
+        eb.disabled=false; setTimeout(()=>{ if(state.view==='status'){render();} connPill(); },1200); }).catch(()=>{r.className='res err';r.textContent='Cannot reach the app server.';eb.disabled=false;}); }; }).catch(()=>{ $('#statusbody').innerHTML='<div class="note"><b>Cannot reach the app server.</b></div>'; });
+  return `<h1>System check</h1><p class="lead">What this box can reach right now. Read-only: it runs a few catalog queries through <code>psql</code>.</p><div id="statusbody" class="panel pad">Checking…</div>`;
+}
+
+let setupTimer=null;
+function setup(){
+  fetch('/api/status').then(r=>r.json()).then(st=>{const c=st.connection||{};
+    const set=(id,v)=>{const e=$('#'+id); if(e&&!e.value&&v&&v!=='(socket)')e.value=v;};
+    set('c-host',c.PGHOST);set('c-port',c.PGPORT);set('c-db',c.PGDATABASE);set('c-user',c.PGUSER);}).catch(()=>{});
+  setTimeout(setupWire,0);
+  return `<h1>Connect, install &amp; service</h1>
+  <p class="lead">Use a Postgres you already have, or let this app install EDB Postgres with AIDB. Settings are saved to <code>env.sh</code> (owner-only). Restart <code>./start.sh</code> afterwards so the Showcase picks them up.</p>
+  <section class="panel pad"><h2 style="margin-top:0">Connect to an existing database</h2>
+    <p style="color:var(--muted);margin:0">The server must already have the <code>aidb</code> extension. Tested before it is saved.</p>
+    <div class="frm">
+      <label>Host<input id="c-host" placeholder="127.0.0.1" autocomplete="off"></label>
+      <label>Port<input id="c-port" placeholder="blank = try 5432, 5444" inputmode="numeric" autocomplete="off"></label>
+      <label>Database<input id="c-db" placeholder="postgres, or edb" autocomplete="off"></label>
+      <label>User<input id="c-user" placeholder="postgres, or enterprisedb" autocomplete="off"></label>
+      <label>Password<input id="c-pass" type="password" autocomplete="new-password"></label>
+    </div>
+    <button class="btn" id="c-go">Test and save</button><div class="res" id="c-res" role="status"></div>
+  </section>
+  <section class="panel pad" style="margin-top:16px"><h2 style="margin-top:0">Database service</h2>
+    <p style="color:var(--muted);margin:0" id="s-line">Looking for Postgres on this machine…</p>
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn" data-svc="start">Start</button><button class="btn alt" data-svc="stop">Stop</button>
+      <button class="btn alt" data-svc="restart">Restart</button><button class="btn alt" data-svc="reload">Reload config</button>
+    </div><div class="res" id="s-res" role="status"></div>
+    <p style="color:var(--muted);font-size:12px;margin:14px 0 8px">Already have Postgres installed here (for example created with initdb) and "Ident authentication failed" when connecting? Prepare it: creates a password login <code>aibox</code>, allows it over TCP, preloads AIDB and enables the extensions, then connects this app. Uses the Flavor and Version chosen in the install panel below. No token needed.</p>
+    <button class="btn" id="s-prep">Prepare this instance for AI in the Box</button>
+  </section>
+  <section class="panel pad" style="margin-top:16px"><h2 style="margin-top:0">Install EDB Postgres with AIDB</h2>
+    <p style="color:var(--muted);margin:0">Adds the EDB repository, installs Postgres with AIDB, pgvector, PGFS, Vector Plus, pg_textsearch and, where supported, Analytics Accelerator (PGAA, from the postgres_distributed repository), then connects this app to it. Get a token with a free EDB account (60-day trial): <a href="https://www.enterprisedb.com/docs/repos/getting_started/get_your_token/" target="_blank" rel="noopener">get your token</a>.</p>
+    <div class="frm">
+      <label>EDB subscription token<input id="i-token" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your token"></label>
+      <label>Flavor<select id="i-flavor"><option value="as">EDB Postgres Advanced Server</option><option value="pg">PostgreSQL (community)</option><option value="pge">EDB Postgres Extended (best effort)</option></select></label>
+      <label>Version<select id="i-ver"><option>18</option><option>17</option></select></label>
+    </div>
+    <label class="chk"><input type="checkbox" id="i-docker"> Install in a Docker container instead (required on a Mac)</label>
+    <p style="color:var(--muted);font-size:12px;margin:4px 0 10px">The token is sent only to this app on your machine, passed to the installer through its environment, hidden from the log and never saved. EDB's repository script stores it in the package manager's own config. Native install needs root or passwordless sudo, and Linux: Debian 12, Ubuntu 22.04/24.04, RHEL 8/9.</p>
+    <button class="btn" id="i-go">Install</button> <button class="btn alt" id="i-plan">Show the plan only</button>
+    <div class="res" id="i-res" role="status"></div><pre class="log" id="i-log" hidden></pre>
+  </section>`;
+}
+function setupWire(){
+  const res=(id,ok,t)=>{const e=$('#'+id); if(e){e.className='res '+(ok?'ok':'err'); e.textContent=t;}};
+  const post=(u,b)=>fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(r=>r.json());
+  const cg=$('#c-go'); if(!cg) return;
+  const svcLine=()=>fetch('/api/service').then(r=>r.json()).then(j=>{ const e=$('#s-line'); if(!e)return;
+    if(!j.found){e.textContent='No Postgres service or data directory found on this machine. (If Postgres runs elsewhere, manage it there.)';document.querySelectorAll('[data-svc]').forEach(b=>b.disabled=true);return;}
+    e.innerHTML='<b>'+esc(j.label)+'</b>: '+(j.state==='active'?'running':esc(j.state))+(j.can_control?'':' (this app cannot control it: needs root or passwordless sudo)');
+    document.querySelectorAll('[data-svc]').forEach(b=>b.disabled=!j.can_control);}).catch(()=>{});
+  svcLine();
+  document.querySelectorAll('[data-svc]').forEach(b=>b.onclick=()=>{ const a=b.dataset.svc; res('s-res',true,a+'…');
+    document.querySelectorAll('[data-svc]').forEach(x=>x.disabled=true);
+    post('/api/service',{action:a}).then(j=>{ res('s-res',!!j.ok,j.ok?('Done: '+a+'. Service is '+(j.state==='active'?'running':j.state)+'.'):(j.error||'Failed.')); svcLine(); connPill(); })
+      .catch(()=>res('s-res',false,'Cannot reach the app server.')); });
+  cg.onclick=()=>{ res('c-res',true,'Testing…');
+    post('/api/connect',{host:$('#c-host').value,port:$('#c-port').value,database:$('#c-db').value,user:$('#c-user').value,password:$('#c-pass').value})
+      .then(j=>{ if(j.ok){res('c-res',true,'Connected and saved. '+j.server); $('#c-pass').value=''; connPill();} else res('c-res',false,j.error||'Failed.');})
+      .catch(()=>res('c-res',false,'Cannot reach the app server.')); };
+  const run=check=>{
+    res('i-res',true,check?'Preparing the plan…':'Starting…');
+    post('/api/install',{token:$('#i-token').value,flavor:$('#i-flavor').value,version:$('#i-ver').value,docker:$('#i-docker').checked,check})
+      .then(j=>{ if(!j.ok){res('i-res',false,j.error||'Failed.');return;} if(!check) $('#i-token').value=''; poll(); })
+      .catch(()=>res('i-res',false,'Cannot reach the app server.')); };
+  const pb=$('#s-prep'); if(pb) pb.onclick=()=>{ res('s-res',true,'Preparing… see the log in the install panel below.');
+    post('/api/install',{configure_only:true,flavor:$('#i-flavor').value,version:$('#i-ver').value}).then(j=>{ if(!j.ok){res('s-res',false,j.error||'Failed.');return;} poll(); }).catch(()=>res('s-res',false,'Cannot reach the app server.')); };
+  $('#i-go').onclick=()=>run(false); $('#i-plan').onclick=()=>run(true);
+  function poll(){
+    clearInterval(setupTimer);
+    const tick=()=>fetch('/api/install/log').then(r=>r.json()).then(j=>{
+      const l=$('#i-log'); if(!l){clearInterval(setupTimer);return;}
+      l.hidden=false; l.textContent=j.text; l.scrollTop=l.scrollHeight;
+      if(j.state==='running') res('i-res',true,'Working… this can take several minutes.');
+      else { clearInterval(setupTimer);
+        if(j.state==='done') { res('i-res',true,j.check?'Plan shown above. Nothing was changed.':'Done. This app is now connected. Open System check, then run ./start.sh --setup-demo to load the demo data.'); connPill(); }
+        else res('i-res',false,'The installer stopped. Read the last lines of the log above.'); }
+    }).catch(()=>{});
+    tick(); setupTimer=setInterval(tick,2000);
+  }
+  fetch('/api/install/log').then(r=>r.json()).then(j=>{ if(j.state==='running'){$('#i-log').hidden=false;poll();} });
+}
+function statusHtml(s){
+  const row=(ok,label,detail)=>`<span class="pill s-${ok?'Complete':'Hold'}">${ok?'OK':'Needs attention'}</span><div><b>${label}</b><div class="d" style="color:var(--muted)">${detail}</div></div>`;
+  const c=s.connection||{};
+  let h='<div class="ck">'+row(s.psql,'psql client',s.psql?'Found on PATH.':'Install it: Linux <code>apt install postgresql-client</code>, macOS <code>brew install libpq</code>.')
+   +row(s.connected,'Database connection',s.connected?esc(s.server):esc(s.error||'')+'<br>Open <a href="#setup">Connect &amp; install</a>, or edit <code>env.sh</code>: host '+esc(c.PGHOST)+', port '+esc(c.PGPORT)+', database '+esc(c.PGDATABASE)+', user '+esc(c.PGUSER)+'.');
+  if(s.connected){
+    h+=(s.extensions||[]).map(e=>row(!!e.installed,e.name,e.installed?'Installed, version '+esc(e.installed):(e.available?'Available. Run <code>CREATE EXTENSION '+esc(e.name)+(e.name==='aidb'||e.name==='edb_vectorplus'?' CASCADE':'')+';</code>':(e.name==='aidb'?'Not available on this server. Open <a href="#setup">Connect &amp; install</a> to install EDB Postgres with AIDB (Linux), or install it in Docker (Mac).':'Not available on this server.')))).join('');
+    const todo=(s.extensions||[]).some(e=>e.available&&!e.installed&&e.name!=='age'&&e.name!=='vector');
+    if(todo) h+='<div style="grid-column:1/-1;margin-top:6px"><button class="btn" id="enable-all">Enable the AI extensions</button> <span style="color:var(--muted);font-size:12px">Adds aidb (and pg_textsearch, pgaa) to shared_preload_libraries, restarts Postgres, then runs CREATE EXTENSION for each. Needs a superuser login and the ability to restart Postgres.</span><div class="res" id="en-res" role="status"></div></div>';
+    h+=row(s.demo_data,'Showcase demo data (schema shop)',s.demo_data?'Loaded.':'Not loaded. Run <code>./start.sh --setup-demo</code>.');
+    if(s.aidb_counts) h+=row(true,'AIDB objects',s.aidb_counts.models+' models, '+s.aidb_counts.agents+' agents registered.');
+  }
+  h+=row(true,'AIDB Introspector','Built in: open it from the menu.')+row(s.showcase_installed,'Showcase demo-data scripts',s.showcase_installed?'Present in <code>./aidb-showcase/demo-data</code>.':'Not installed. Run <code>./install.sh</code>.');
+  return h+'</div>';
+}
+function connPill(){
+  const el=$('#conn'); el.onclick=()=>{location.hash=el.classList.contains('bad')?'setup':'status'};
+  fetch('/api/status').then(r=>r.json()).then(s=>{
+    const a=(s.extensions||[]).find(e=>e.name==='aidb');
+    el.className='connpill '+(s.connected&&a&&a.installed?'ok':'bad');
+    el.innerHTML='<i></i>'+(s.connected?(a&&a.installed?'Connected · AIDB '+esc(a.installed):'Connected · AIDB not installed'):'Database not connected');
+  }).catch(()=>{el.className='connpill bad';el.innerHTML='<i></i>Server not reachable'});
+}
+const views={overview,demos,inventory,data,models,decisions,setup,status,showcase,reader};
+const ICON={"home": "<path d=\"M3 11l9-7 9 7\"/><path d=\"M5 10v10h14V10\"/>", "play": "<polygon points=\"6 4 20 12 6 20\"/>", "compass": "<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M15.5 8.5l-2 5-5 2 2-5z\"/>", "book": "<path d=\"M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z\"/><path d=\"M5 17a3 3 0 0 1 3-3h11\"/>", "list": "<path d=\"M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01\"/>", "cpu": "<rect x=\"6\" y=\"6\" width=\"12\" height=\"12\" rx=\"2\"/><path d=\"M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4\"/>", "db": "<ellipse cx=\"12\" cy=\"5\" rx=\"8\" ry=\"3\"/><path d=\"M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5\"/><path d=\"M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3\"/>", "help": "<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 1-1 1.7M12 17h.01\"/>", "check": "<path d=\"M4 12l5 5L20 6\"/>", "window": "<rect x=\"3\" y=\"4\" width=\"18\" height=\"16\" rx=\"2\"/><path d=\"M3 9h18\"/>"};
+const ic=(k,z)=>`<svg width="${z}" height="${z}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
+function navHtml(v){
+  return NAV().map(g=>{
+    if(g.to) return `<div class="navgroup"><a href="#${g.to}" class="navhead solo ${g.to===v?'on':''}" ${g.to===v?'aria-current="page"':''}>${ic(g.i,18)}${g.h}</a></div>`;
+    const cur=k=>k===v||(v==='reader'&&k==='demos');
+    const within=g.items.some(it=>cur(it[0]));
+    return `<div class="navgroup"><a href="#${g.items[0][0]}" class="navhead ${within?'within':''}">${ic(g.i,18)}${g.h}</a>`+
+      g.items.map(([k,l,n,i])=>`<a href="#${k}" class="navitem ${cur(k)?'on':''}" ${cur(k)?'aria-current="page"':''}>${ic(i,16)}${l}${n!==''?`<span>${n}</span>`:''}</a>`).join('')+'</div>';
+  }).join('');
+}
+const NAV=()=>[{h:'Home',i:'home',to:'overview'},
+ {h:'Run it',i:'play',items:[['setup','Connect & install','','cpu'],['status','System check','','check'],['showcase','AIDB Introspector','','window'],['demos','Demo notebooks',D.length,'book']]},
+ {h:'Explore',i:'compass',items:[['inventory','Inventory',R.length,'list'],['models','Models',M.length,'cpu'],['data','Data needed',D.length,'db']]},
+ {h:'Decisions',i:'help',items:[['decisions','Open questions',Q.filter(q=>q.s==='Open').length,'help']]}];
+
+function render(){
+  let v=location.hash.slice(1); if(v.startsWith('read-')){state.nb=+v.slice(5);v='reader';} if(!views[v]) v='overview'; state.view=v; if(v!=='setup')clearInterval(setupTimer); clearTimeout(jupTimer); if(typeof setupTimer!=='undefined'&&v!=='setup')clearInterval(setupTimer);
+  $('#nav').innerHTML=navHtml(v);
+  $('#view').innerHTML=views[v]();
+  wire();
+}
+function wire(){
+  const V=$('#view');
+  V.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{state.f=b.dataset.f||'';state.st='all';state.cat='all';state.tg='all';state.q='';location.hash=b.dataset.go;if(location.hash.slice(1)===b.dataset.go&&state.view===b.dataset.go)render();});
+  V.querySelectorAll('[data-id]').forEach(b=>b.onclick=()=>{state.f='';state.st='all';state.cat='all';state.tg='all';state.q=b.dataset.id;location.hash='inventory';if(state.view==='inventory')render();});
+  V.querySelectorAll('[data-demo]').forEach(b=>b.onclick=()=>{const s=b.parentElement;const o=s.classList.toggle('open');b.setAttribute('aria-expanded',o);});
+  V.querySelectorAll('[data-st]').forEach(b=>b.onclick=()=>{state.st=b.dataset.st;render();});
+  const cl=V.querySelector('[data-clearf]'); if(cl) cl.onclick=()=>{state.f='';render();};
+  const iq=$('#iq'); if(iq) iq.oninput=e=>{state.q=e.target.value;const p=e.target.selectionStart;render();const n=$('#iq');n.focus();n.setSelectionRange(p,p);};
+  const ic=$('#icat'); if(ic) ic.onchange=e=>{state.cat=e.target.value;render();};
+  const it=$('#itg'); if(it) it.onchange=e=>{state.tg=e.target.value;render();};
+}
+$('#gq').addEventListener('input',e=>{state.q=e.target.value;state.f='';state.st='all';state.cat='all';state.tg='all';if(location.hash.slice(1)!=='inventory')location.hash='inventory';else render();});
+window.addEventListener('hashchange',render);
+fetch('/static/data.json').then(r=>r.json()).then(j=>{({S,R,D,M,Q,NB}=j);render();connPill();}).catch(()=>{$('#view').innerHTML='<div class="empty">Could not load data.json.</div>'});
+</script>

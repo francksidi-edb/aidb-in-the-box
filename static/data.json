@@ -1,0 +1,1072 @@
+{
+ "S": {
+  "C": "Complete",
+  "A": "Accepted",
+  "X": "Excluded",
+  "L": "For later phases",
+  "H": "On-hold",
+  "I": "Idea",
+  "N": "No status"
+ },
+ "R": [
+  {
+   "id": "C-01",
+   "cat": "Sample data",
+   "item": "Sample schema",
+   "d": "Tables to query with text-to-SQL and the in-db models. Starts from the foods table in the AIDB agent example.",
+   "target": "Both",
+   "del": "Bundled in image",
+   "phase": "Phase 1",
+   "st": "X",
+   "owner": "",
+   "note": "A buyer can swap in their own schema."
+  },
+  {
+   "id": "C-02",
+   "cat": "Documents",
+   "item": "Pre-ingested Wikipedia-type documents",
+   "d": "Documents already embedded and indexed, so RAG and Vector search+ work on the first run.",
+   "target": "Both",
+   "del": "Bundled in image",
+   "phase": "Phase 1",
+   "st": "X",
+   "owner": "",
+   "note": "Wikipedia text is CC BY-SA: attribution and share-alike apply."
+  },
+  {
+   "id": "C-03",
+   "cat": "Agents",
+   "item": "SQL analyst",
+   "d": "Reads the catalog, runs read-only SQL and answers from the result.",
+   "target": "Both",
+   "del": "Bundled in image",
+   "phase": "Phase 1",
+   "st": "C",
+   "owner": "Jon",
+   "note": "Needs a model that calls tools reliably."
+  },
+  {
+   "id": "C-04",
+   "cat": "Agents",
+   "item": "Document Q&A",
+   "d": "Searches the indexed documents and answers with the in-db SLM.",
+   "target": "Both",
+   "del": "Bundled in image",
+   "phase": "Phase 1",
+   "st": "C",
+   "owner": "Jon",
+   "note": "Sheet note: connect external models only, with customer-provided API keys."
+  },
+  {
+   "id": "C-05",
+   "cat": "Agents",
+   "item": "Memory assistant",
+   "d": "Reuses stored context and reports the savings.",
+   "target": "Both",
+   "del": "Bundled in image",
+   "phase": "Phase 2",
+   "st": "A",
+   "owner": "",
+   "note": "Agent memory is a preview capability in AIDB."
+  },
+  {
+   "id": "C-06",
+   "cat": "Skills",
+   "item": "Ingest documents",
+   "d": "One command or CLI takes a file or folder into an AI pipeline and the index.",
+   "target": "Both",
+   "del": "Bundled in image",
+   "phase": "Phase 1",
+   "st": "A",
+   "owner": "",
+   "note": ""
+  },
+  {
+   "id": "C-07",
+   "cat": "Skills",
+   "item": "Search documents",
+   "d": "Semantic and keyword search over the documents that were ingested.",
+   "target": "Both",
+   "del": "Bundled in image",
+   "phase": "Phase 1",
+   "st": "A",
+   "owner": "",
+   "note": ""
+  },
+  {
+   "id": "C-08",
+   "cat": "Skills",
+   "item": "Summarize with the buyer's own key",
+   "d": "Calls OpenAI, Claude or Gemini with the buyer's key, held in a named credential (AIDB 7.8).",
+   "target": "Both",
+   "del": "Customer supplies",
+   "phase": "Phase 1",
+   "st": "A",
+   "owner": "",
+   "note": "The image ships no keys."
+  },
+  {
+   "id": "C-09",
+   "cat": "Skills",
+   "item": "Auto-embedding pipeline",
+   "d": "Turns tables and documents into vectors and keeps them in sync as the data changes.",
+   "target": "",
+   "del": "",
+   "phase": "",
+   "st": "N",
+   "owner": "Lucie",
+   "note": "Source: edb-agent-skills repo. Row has no target, phase or status."
+  },
+  {
+   "id": "C-10",
+   "cat": "Skills",
+   "item": "RAG Application",
+   "d": "Retrieves the relevant KB and has the LLM answer with citations, such as a support agent assistant.",
+   "target": "",
+   "del": "",
+   "phase": "",
+   "st": "N",
+   "owner": "Lucie",
+   "note": "Source: edb-agent-skills repo. Row has no target, phase or status."
+  },
+  {
+   "id": "C-11",
+   "cat": "Skills",
+   "item": "Text2Sql",
+   "d": "Translates a plain-English question into SQL against the schema and runs it.",
+   "target": "",
+   "del": "",
+   "phase": "",
+   "st": "N",
+   "owner": "Lucie",
+   "note": "Source: edb-agent-skills repo. Row has no target, phase or status."
+  },
+  {
+   "id": "C-12",
+   "cat": "Model",
+   "item": "Built-in Model",
+   "d": "AIDB built-in models.",
+   "target": "",
+   "del": "",
+   "phase": "",
+   "st": "N",
+   "owner": "Lucie",
+   "note": "Row has no target, phase or status."
+  },
+  {
+   "id": "C-13",
+   "cat": "Model",
+   "item": "Model Registration",
+   "d": "Register an LLM, embedding model or reranker (public cloud or local) inside Postgres as a named model.",
+   "target": "",
+   "del": "",
+   "phase": "",
+   "st": "X",
+   "owner": "Lucie",
+   "note": "Already done in the agents."
+  },
+  {
+   "id": "C-14",
+   "cat": "In-db models",
+   "item": "Classification model",
+   "d": "Assigns a category, such as a support ticket type. Classical, not an LLM.",
+   "target": "Both",
+   "del": "Bundled in image",
+   "phase": "Phase 1",
+   "st": "L",
+   "owner": "",
+   "note": "Buyer can push their own tuned classical models."
+  },
+  {
+   "id": "C-15",
+   "cat": "In-db models",
+   "item": "Scoring model",
+   "d": "Ranks records, such as lead or churn risk. Classical, not an LLM.",
+   "target": "Both",
+   "del": "Bundled in image",
+   "phase": "Phase 1",
+   "st": "L",
+   "owner": "",
+   "note": ""
+  },
+  {
+   "id": "C-16",
+   "cat": "In-db models",
+   "item": "Forecast model",
+   "d": "Projects a series, such as monthly demand. Classical, not an LLM.",
+   "target": "Both",
+   "del": "Bundled in image",
+   "phase": "Phase 1",
+   "st": "L",
+   "owner": "",
+   "note": ""
+  },
+  {
+   "id": "C-17",
+   "cat": "Agent memory",
+   "item": "Seeded memory context",
+   "d": "Pre-populated context so token and turn savings show from the first question.",
+   "target": "Both",
+   "del": "Bundled in image",
+   "phase": "Phase 2",
+   "st": "A",
+   "owner": "",
+   "note": ""
+  },
+  {
+   "id": "C-18",
+   "cat": "Agent memory",
+   "item": "Token and turn savings counter",
+   "d": "A counter or log of tokens, turns and repeat conversations saved, queryable in SQL.",
+   "target": "Both",
+   "del": "Bundled in image",
+   "phase": "Phase 2",
+   "st": "A",
+   "owner": "",
+   "note": "Open: do 7.8 traces carry token usage? If not, add a savings table."
+  },
+  {
+   "id": "C-19",
+   "cat": "Extensions",
+   "item": "pgvector",
+   "d": "Vector storage and search.",
+   "target": "Both",
+   "del": "Bundled in image",
+   "phase": "Phase 1",
+   "st": "C",
+   "owner": "Jon",
+   "note": "Already in the base image. Confirm the open-source notice travels with the image."
+  },
+  {
+   "id": "C-20",
+   "cat": "Extensions",
+   "item": "vectorplus (ivfplus index)",
+   "d": "ivfplus vector index access method for Vector search+.",
+   "target": "Both",
+   "del": "Bundled in image",
+   "phase": "Phase 1",
+   "st": "A",
+   "owner": "",
+   "note": "Already in the base image."
+  },
+  {
+   "id": "C-21",
+   "cat": "Extensions",
+   "item": "pg_textsearch (BM25)",
+   "d": "Full-text search with BM25 ranking, fused with vector results.",
+   "target": "Both",
+   "del": "Bundled in image",
+   "phase": "Phase 1",
+   "st": "A",
+   "owner": "",
+   "note": "Already in the base image."
+  },
+  {
+   "id": "C-22",
+   "cat": "Extensions",
+   "item": "PGFS",
+   "d": "Reads files and object storage for ingestion.",
+   "target": "Both",
+   "del": "Bundled in image",
+   "phase": "Phase 1",
+   "st": "C",
+   "owner": "Jon",
+   "note": "Already in the base image."
+  },
+  {
+   "id": "C-23",
+   "cat": "Extensions",
+   "item": "Apache AGE",
+   "d": "Graph layer for GraphRAG.",
+   "target": "Both",
+   "del": "Bundled in image",
+   "phase": "Phase 2",
+   "st": "A",
+   "owner": "",
+   "note": "Use cases come later."
+  },
+  {
+   "id": "C-24",
+   "cat": "Apps and tools",
+   "item": "AIDB Introspector",
+   "d": "Read-only local app that shows what AIDB exposes: functions, settings, live objects, SQL console and version compare.",
+   "target": "Both",
+   "del": "Bundled in image",
+   "phase": "Phase 1",
+   "st": "A",
+   "owner": "Franck",
+   "note": "Repo: francksidi-edb/aidb-showcase."
+  },
+  {
+   "id": "C-25",
+   "cat": "Apps and tools",
+   "item": "MCP endpoint",
+   "d": "Serves the AIDB tool catalog to external MCP clients (edb.endpoints_mcp_enabled).",
+   "target": "Both",
+   "del": "Bundled in image",
+   "phase": "Phase 1",
+   "st": "C",
+   "owner": "Jon",
+   "note": "Added in AIDB 7.8."
+  },
+  {
+   "id": "C-26",
+   "cat": "Apps and tools",
+   "item": "OpenTelemetry tracing",
+   "d": "Traces agent and tool calls into the aidb_otel tables, so a buyer can see what the agents did.",
+   "target": "Both",
+   "del": "Bundled in image",
+   "phase": "Phase 2",
+   "st": "A",
+   "owner": "Jon",
+   "note": "Added in AIDB 7.8."
+  },
+  {
+   "id": "C-27",
+   "cat": "Documentation",
+   "item": "First-run guide",
+   "d": "Short guide with sample questions to try on the data, the documents and the agents.",
+   "target": "Both",
+   "del": "Bundled in image",
+   "phase": "Phase 1",
+   "st": "A",
+   "owner": "Claude",
+   "note": ""
+  },
+  {
+   "id": "C-28",
+   "cat": "Adoption tracking",
+   "item": "Download counter",
+   "d": "A way to count downloads of the image and see who is trying it.",
+   "target": "Both",
+   "del": "To decide",
+   "phase": "Phase 1",
+   "st": "A",
+   "owner": "Tim",
+   "note": "Mechanism to be defined."
+  },
+  {
+   "id": "C-29",
+   "cat": "Adoption tracking",
+   "item": "Feedback path",
+   "d": "A route for feature requests and bugs from people using the image.",
+   "target": "Both",
+   "del": "To decide",
+   "phase": "Phase 1",
+   "st": "H",
+   "owner": "",
+   "note": "Mechanism to be defined."
+  },
+  {
+   "id": "C-30",
+   "cat": "Governance",
+   "item": "Guardrails and policy rules",
+   "d": "Blocks or flags prompt injection, jailbreaks, off-topic requests and forbidden actions such as \"dump all customers\".",
+   "target": "Both",
+   "del": "Bundled in image",
+   "phase": "Phase 1",
+   "st": "A",
+   "owner": "Lucie",
+   "note": ""
+  },
+  {
+   "id": "C-31",
+   "cat": "Governance",
+   "item": "Audit log",
+   "d": "Records who, what prompt, which model, which data, which policy fired and the decision, as append-only rows you can query with SQL (leverage aidb_otel).",
+   "target": "Both",
+   "del": "",
+   "phase": "Phase 1",
+   "st": "A",
+   "owner": "Lucie",
+   "note": "Jon: has something already built for this."
+  },
+  {
+   "id": "C-32",
+   "cat": "Governance",
+   "item": "RBAC and Row-Level-Security",
+   "d": "Different personas (analyst, admin, auditor) see different data through the same agent.",
+   "target": "Both",
+   "del": "",
+   "phase": "Phase 1",
+   "st": "A",
+   "owner": "Lucie",
+   "note": ""
+  },
+  {
+   "id": "C-33",
+   "cat": "Governance",
+   "item": "Source citations and lineage",
+   "d": "Each answer lists the documents, rows and model version it used.",
+   "target": "Both",
+   "del": "",
+   "phase": "Phase 1",
+   "st": "A",
+   "owner": "Lucie",
+   "note": ""
+  },
+  {
+   "id": "C-34",
+   "cat": "Governance",
+   "item": "App-guardrail toggle",
+   "d": "Database-layer protection on top of app-layer controls. A switch that turns app-layer controls on or off, to compare protected and unprotected runs.",
+   "target": "Both",
+   "del": "",
+   "phase": "Phase 1",
+   "st": "A",
+   "owner": "Lucie",
+   "note": ""
+  },
+  {
+   "id": "C-35",
+   "cat": "Governance",
+   "item": "AIDB, Governance & Text-to-SQL",
+   "d": "Monitor prompts and prompt injections that vary from the original agent intent (blocked, flagged and so on).",
+   "target": "",
+   "del": "To decide",
+   "phase": "Phase 1",
+   "st": "A",
+   "owner": "Lucie",
+   "note": ""
+  },
+  {
+   "id": "C-36",
+   "cat": "Governance",
+   "item": "PII redaction",
+   "d": "Detects and masks PII before it reaches the model and before the answer reaches the user.",
+   "target": "Both",
+   "del": "",
+   "phase": "Phase 1",
+   "st": "A",
+   "owner": "Lucie",
+   "note": ""
+  },
+  {
+   "id": "C-37",
+   "cat": "Governance",
+   "item": "Policy dashboard",
+   "d": "Counts of blocked requests, redactions and approvals, plus a policy on/off toggle.",
+   "target": "",
+   "del": "",
+   "phase": "Phase 1",
+   "st": "A",
+   "owner": "Lucie",
+   "note": ""
+  },
+  {
+   "id": "C-38",
+   "cat": "Agents",
+   "item": "Apache AGE and RAG",
+   "d": "Answer multi-hop questions, such as which customers are affected by a product issue and who owns them.",
+   "target": "",
+   "del": "To decide",
+   "phase": "",
+   "st": "I",
+   "owner": "",
+   "note": ""
+  },
+  {
+   "id": "C-39",
+   "cat": "Agents",
+   "item": "Agent with tools",
+   "d": "Agent that decides when to search, when to run SQL and when to answer.",
+   "target": "",
+   "del": "",
+   "phase": "Phase 1",
+   "st": "C",
+   "owner": "Jon",
+   "note": ""
+  },
+  {
+   "id": "C-40",
+   "cat": "Apps and tools",
+   "item": "Summarization",
+   "d": "Document and contract summarisation, for example for BFSI corporate customers.",
+   "target": "",
+   "del": "To decide",
+   "phase": "Phase 1",
+   "st": "C",
+   "owner": "Jon",
+   "note": ""
+  },
+  {
+   "id": "C-41",
+   "cat": "In-db models",
+   "item": "Standardisation & cleansing",
+   "d": "Cleanse master profile data (name, location, address) using any supported LLM.",
+   "target": "",
+   "del": "To decide",
+   "phase": "Phase 2",
+   "st": "I",
+   "owner": "",
+   "note": ""
+  },
+  {
+   "id": "C-42",
+   "cat": "GUI",
+   "item": "Front-end app",
+   "d": "AI-in-a-box entry point, guiding to all demos. Mock app first.",
+   "target": "",
+   "del": "To decide",
+   "phase": "Phase 1",
+   "st": "A",
+   "owner": "Gianluca / Franck",
+   "note": "This page is a first mock."
+  },
+  {
+   "id": "C-43",
+   "cat": "Agents",
+   "item": "Conversations Agent",
+   "d": "Agent on top of aidb.conversation_log to find out how people are using the AIDB agents.",
+   "target": "",
+   "del": "",
+   "phase": "Phase 1",
+   "st": "C",
+   "owner": "Jon",
+   "note": ""
+  },
+  {
+   "id": "C-44",
+   "cat": "Agents",
+   "item": "Documents Validation",
+   "d": "Parse PDF files and extract structured fields. Validate PDFs have the required data fields against a set of rules.",
+   "target": "",
+   "del": "",
+   "phase": "Phase 1",
+   "st": "C",
+   "owner": "Jon",
+   "note": ""
+  },
+  {
+   "id": "C-45",
+   "cat": "Agents",
+   "item": "Governance",
+   "d": "Show how agents work with roles and a purpose.",
+   "target": "",
+   "del": "",
+   "phase": "Phase 1",
+   "st": "C",
+   "owner": "Jon",
+   "note": ""
+  },
+  {
+   "id": "C-46",
+   "cat": "Agents",
+   "item": "Semantic KB",
+   "d": "Agent that creates SQL and executes it in a conversation.",
+   "target": "",
+   "del": "",
+   "phase": "Phase 1",
+   "st": "C",
+   "owner": "Jon",
+   "note": ""
+  },
+  {
+   "id": "C-47",
+   "cat": "Apps and tools",
+   "item": "Agent Hub",
+   "d": "App that lets users select an existing agent and have a conversation.",
+   "target": "",
+   "del": "",
+   "phase": "Phase 1",
+   "st": "C",
+   "owner": "Jon",
+   "note": "No notebook supplied."
+  },
+  {
+   "id": "C-48",
+   "cat": "Agents",
+   "item": "Budgets",
+   "d": "Show how to control costs with budgets (using Semantic KB).",
+   "target": "",
+   "del": "",
+   "phase": "Phase 1",
+   "st": "C",
+   "owner": "Jon",
+   "note": ""
+  },
+  {
+   "id": "C-49",
+   "cat": "Apps and tools",
+   "item": "Document Validation app",
+   "d": "Companion to the Documents Validation notebook for a business-user demo.",
+   "target": "",
+   "del": "",
+   "phase": "Phase 1",
+   "st": "C",
+   "owner": "Jon",
+   "note": "No notebook supplied."
+  }
+ ],
+ "D": [
+  {
+   "n": "Text-to-SQL Agent",
+   "f": "AIDB_Agents_-_Text-to-SQL.ipynb",
+   "ids": [
+    "C-03"
+   ],
+   "blurb": "Ask questions about a table in plain English. The agent finds the table, writes read-only SQL, runs it and explains the result.",
+   "data": "public.foods, 5,000 generated rows across 8 food categories (created in the notebook)",
+   "net": "None at setup",
+   "key": true,
+   "restart": false,
+   "files": false,
+   "how": [
+    "aidb.create_model (anthropic_messages, claude-sonnet-5)",
+    "aidb.create_agent with catalog_list_objects, catalog_get_object_details, run_sql_query",
+    "aidb.agent_converse with a conversation_id for follow-ups",
+    "aidb.conversations and aidb.conversation_log"
+   ],
+   "q": [
+    "What is the average calorie count of vegetarian foods by category?"
+   ],
+   "learn": "An agent discovers tables at question time. Every step is logged in ordinary tables."
+  },
+  {
+   "n": "Semantic KB",
+   "f": "AIDB_Agents_-_Semantic_KB.ipynb",
+   "ids": [
+    "C-46"
+   ],
+   "blurb": "Index a schema, not the data, so an agent can find tables, work out joins and answer in conversation.",
+   "data": "banking schema: 6 tables with comments (7 branches, 15 customers, 25 accounts, ~50 transactions, 15 loans, ~30 payments)",
+   "net": "None at setup",
+   "key": true,
+   "restart": false,
+   "files": false,
+   "how": [
+    "aidb.create_semantic_kb (bge-small-en-v1.5-f16, Live auto-processing)",
+    "Agent with 5 tools: semantic_kb_search, search_by_comment, list_relationships, find_join_path, run_sql_query",
+    "max_iterations 10"
+   ],
+   "q": [
+    "Which customers have delinquent loans and what is their total outstanding balance?",
+    "Which current one has the largest balance? (follow-up)",
+    "Which branches hold the highest total deposit balances?",
+    "Which accounts are overdrawn, and who owns them?",
+    "Which transactions were flagged as fraud, and which customers do they belong to?",
+    "What is the total outstanding loan balance by loan type, and by region?"
+   ],
+   "learn": "Comments on tables and columns drive search quality. Editing a comment changes what the agent finds."
+  },
+  {
+   "n": "RAG over Documents",
+   "f": "AIDB_Agents_-_RAG_over_Documents.ipynb",
+   "ids": [
+    "C-04",
+    "C-39"
+   ],
+   "blurb": "Two knowledge bases, a table and two PDFs, and one agent that picks the right source for each question.",
+   "data": "public.food_notes (12 notes) and two IRS PDFs: i1040gi.pdf and p17.pdf",
+   "net": "Downloads PDFs from irs.gov",
+   "key": true,
+   "restart": true,
+   "files": false,
+   "how": [
+    "AI pipeline: KnowledgeBase for the table; ParsePdf, ChunkText, KnowledgeBase for PDFs",
+    "aidb.retrieve_text similarity search",
+    "Custom SQL tools search_food and search_tax_docs",
+    "Agent with both tools",
+    "PGFS storage location and volume, pgfs.allowed_local_fs_paths"
+   ],
+   "q": [
+    "What should I eat to build muscle?",
+    "What are the new rules for overtime?",
+    "What are the new rules for taxes on tips?"
+   ],
+   "learn": "Same recipe for any source: pipeline, similarity search, custom tool, agent. Logging is automatic."
+  },
+  {
+   "n": "Governance",
+   "f": "AIDB_Agents_-_Governance.ipynb",
+   "ids": [
+    "C-45"
+   ],
+   "blurb": "Two agents with identical instructions see different data, because each runs as a different database role.",
+   "data": "cc_raw.credit_card_transactions, 100,000 sampled rows from Hugging Face pointe77/credit-card-transaction",
+   "net": "Downloads dataset from Hugging Face",
+   "key": true,
+   "restart": false,
+   "files": false,
+   "how": [
+    "View with column-level masking via pg_has_role",
+    "Roles cc_support_analyst and cc_supervisor",
+    "aidb.create_purpose, agents tied to a purpose",
+    "Semantic KB over the cc_demo schema"
+   ],
+   "q": [
+    "What are the top 10 states in terms of sum of credit card transactions? (supervisor answers, analyst cannot)"
+   ],
+   "learn": "Enforcement sits in the database. It applies to people, apps and agents alike."
+  },
+  {
+   "n": "Documents Validation",
+   "f": "AIDB_Agents_-_Documents_Validation.ipynb",
+   "ids": [
+    "C-44",
+    "C-49"
+   ],
+   "blurb": "Extract fields from customs PDFs with an agent, check them with plain SQL rules, then explain the findings.",
+   "data": "18 sample customs PDFs, 3 shipments with 6 documents each (Mexico to US auto parts)",
+   "net": "None, but the PDFs must already be staged",
+   "key": true,
+   "restart": false,
+   "files": true,
+   "how": [
+    "Pipeline: ParsePdf, ChunkText, KnowledgeBase",
+    "Extraction agent with a 19-field typed output (aidb.output_type)",
+    "required_fields table (31 rules) and customs_findings view with 6 checks",
+    "SQL tools list_shipments, get_findings, get_shipment_docs",
+    "Validator agent"
+   ],
+   "q": [
+    "Which shipments are ready to file and which are not?",
+    "What is wrong with shipment AB-2026-7731 and how do I fix it?"
+   ],
+   "learn": "The model only extracts. Rules stay in SQL, so they are exact and auditable. Expect findings only for AB-2026-7731."
+  },
+  {
+   "n": "Conversations Agent",
+   "f": "AIDB_Agents_-_Conversations_Agent.ipynb",
+   "ids": [
+    "C-43"
+   ],
+   "blurb": "Turn the agent conversation log into a knowledge base and put an agent on top of it.",
+   "data": "public.aidb_conversations, built from aidb.conversation_log (run after the other demos)",
+   "net": "None",
+   "key": true,
+   "restart": false,
+   "files": false,
+   "how": [
+    "Pipeline: ChunkText (60 words), KnowledgeBase",
+    "Custom tool search_conversations_log",
+    "Agent demo_agent_conversations_log"
+   ],
+   "q": [
+    "What are the most common questions asked?"
+   ],
+   "learn": "Understand what users ask and where agents struggle. Most useful after the other demos have run."
+  },
+  {
+   "n": "Budgets",
+   "f": "AIDB_Agents_-_Budgets.ipynb",
+   "ids": [
+    "C-48"
+   ],
+   "blurb": "Cap what an agent can spend, and see what happens when it hits the cap.",
+   "data": "supply_chain schema, 16 tables (about 5,000 sales orders, 15,000 order lines, 1,500 PO lines)",
+   "net": "None at setup",
+   "key": true,
+   "restart": false,
+   "files": false,
+   "how": [
+    "aidb.update_agent with max_iterations and budget_strategy (error or summarize)",
+    "Also input_token_budget and output_token_budget",
+    "Token estimate query on aidb_internal.action_log",
+    "Semantic KB over supply_chain"
+   ],
+   "q": [
+    "What are the tables available with this agent?",
+    "How many purchase orders are overdue?",
+    "Which is the largest one? (follow-up)",
+    "How many items are in each warehouse? (with a 2-iteration budget)"
+   ],
+   "learn": "Three levers drive cost: the model, the iteration cap and the token budgets."
+  },
+  {
+   "n": "SQL Summarization",
+   "f": "AIDB_SQL_-_Summarization.ipynb",
+   "ids": [
+    "C-40"
+   ],
+   "blurb": "Call an LLM from plain SQL, per row or aggregated across a group, with built-in or custom prompts.",
+   "data": "public.movie_reviews from Hugging Face frankier/processed_multiscale_rt_critics",
+   "net": "Downloads dataset from Hugging Face",
+   "key": true,
+   "restart": false,
+   "files": false,
+   "how": [
+    "aidb.summarize_text (scalar)",
+    "aidb.summarize_text_aggregate (many rows to one)",
+    "aidb.summarize_text_config with a custom prompt, for example a 0 to 1 sentiment score"
+   ],
+   "q": [
+    "Summarise each Star Wars film from all critic reviews",
+    "Score sentiment of one review, then of a whole film"
+   ],
+   "learn": "Combine AI calls with WHERE, GROUP BY, joins and views. Each call hits the model, so filter first."
+  },
+  {
+   "n": "MCP and Claude Desktop",
+   "f": "AIDB_MCP_-_Claude_Desktop_Integration.ipynb",
+   "ids": [
+    "C-25"
+   ],
+   "blurb": "Expose an AIDB tool to Claude Desktop over the MCP endpoint, run as a restricted database role.",
+   "data": "The IRS PDFs knowledge base from the RAG demo, with tool search_tax_docs",
+   "net": "Downloads PDFs from irs.gov; port 8765 must be reachable",
+   "key": false,
+   "restart": true,
+   "files": false,
+   "how": [
+    "Role mcp_agent with aidb_users and SELECT on two tables only",
+    "pg_hba rule, self-signed TLS certificate",
+    "edb.endpoints_mcp_* settings, then a restart",
+    "Bridge script mcp-curl-bridge.sh and a claude_desktop_config.json entry",
+    "Detects AWS public host or falls back to localhost"
+   ],
+   "q": [
+    "Use the search_tax_docs tool to find the 2025 standard deduction, and tell me the source files."
+   ],
+   "learn": "Claude can only reach what the role is granted. Same setup runs on Docker or AWS. Needs Claude Desktop on a Mac."
+  }
+ ],
+ "M": [
+  {
+   "m": "bge-small-en-v1.5-f16",
+   "t": "Embedding",
+   "p": "llamacpp_embeddings",
+   "del": "To decide",
+   "st": "Idea",
+   "n": "AIDB default. Compact English. The only embedding model the notebooks use."
+  },
+  {
+   "m": "nomic-embed-text-v1.5-Q8_0",
+   "t": "Embedding",
+   "p": "llamacpp_embeddings",
+   "del": "To decide",
+   "st": "Idea",
+   "n": "AIDB default. English, 2048-token context."
+  },
+  {
+   "m": "bge-m3-f16",
+   "t": "Embedding",
+   "p": "llamacpp_embeddings",
+   "del": "To decide",
+   "st": "Idea",
+   "n": "AIDB default. Multilingual, 8192-token context."
+  },
+  {
+   "m": "qwen3-embedding-0.6b-Q8_0",
+   "t": "Embedding",
+   "p": "llamacpp_embeddings",
+   "del": "To decide",
+   "st": "Idea",
+   "n": "AIDB default. 16384-token context."
+  },
+  {
+   "m": "qwen3-embedding-4b-Q8_0",
+   "t": "Embedding",
+   "p": "llamacpp_embeddings",
+   "del": "To decide",
+   "st": "Idea",
+   "n": "AIDB default. 20480-token context, more compute."
+  },
+  {
+   "m": "qwen3.5-0.8b-Q8_0",
+   "t": "Text generation",
+   "p": "llamacpp_generate",
+   "del": "To decide",
+   "st": "Idea",
+   "n": "AIDB default. Small and fast."
+  },
+  {
+   "m": "llama-3.2-1b-instruct-Q8_0",
+   "t": "Text generation",
+   "p": "llamacpp_generate",
+   "del": "To decide",
+   "st": "Idea",
+   "n": "AIDB default. Llama 3.2 community licence."
+  },
+  {
+   "m": "phi-4 class SLM",
+   "t": "Text generation",
+   "p": "llamacpp_generate",
+   "del": "To decide",
+   "st": "Idea",
+   "n": "Source to confirm. Test tool calling for the SQL analyst. Torsten Steinbach can help pre-install."
+  },
+  {
+   "m": "lightonocr-2-1b-Q8_0",
+   "t": "OCR",
+   "p": "llamacpp_ocr",
+   "del": "To decide",
+   "st": "Idea",
+   "n": "AIDB default. Text from scans and images."
+  },
+  {
+   "m": "bge-reranker-v2-m3",
+   "t": "Reranking",
+   "p": "llamacpp_reranking",
+   "del": "To decide",
+   "st": "Idea",
+   "n": "Not a default. Register with aidb.create_model()."
+  },
+  {
+   "m": "Qwen3-Reranker-0.6B",
+   "t": "Reranking",
+   "p": "llamacpp_reranking",
+   "del": "To decide",
+   "st": "Idea",
+   "n": "Decoder-only reranker. Not a default."
+  },
+  {
+   "m": "Classification model",
+   "t": "Classical",
+   "p": "To define",
+   "del": "Bundled in image",
+   "st": "Idea",
+   "n": "Example: support ticket category. Not an LLM."
+  },
+  {
+   "m": "Scoring model",
+   "t": "Classical",
+   "p": "To define",
+   "del": "Bundled in image",
+   "st": "Idea",
+   "n": "Example: lead or churn score. Not an LLM."
+  },
+  {
+   "m": "Forecast model",
+   "t": "Classical",
+   "p": "To define",
+   "del": "Bundled in image",
+   "st": "Idea",
+   "n": "Example: monthly demand. Not an LLM."
+  },
+  {
+   "m": "OpenAI",
+   "t": "External",
+   "p": "openai_responses",
+   "del": "Customer supplies",
+   "st": "Idea",
+   "n": "Key in a named credential (AIDB 7.8)."
+  },
+  {
+   "m": "Anthropic Claude",
+   "t": "External",
+   "p": "anthropic_messages",
+   "del": "Customer supplies",
+   "st": "Idea",
+   "n": "All 9 notebooks use claude-sonnet-5 this way (MCP demo uses Claude Desktop instead)."
+  },
+  {
+   "m": "Google Gemini",
+   "t": "External",
+   "p": "Check aidb.model_providers",
+   "del": "Customer supplies",
+   "st": "Idea",
+   "n": "Key in a named credential (AIDB 7.8)."
+  },
+  {
+   "m": "NVIDIA NIM",
+   "t": "External",
+   "p": "Check aidb.model_providers",
+   "del": "Customer supplies",
+   "st": "Idea",
+   "n": "Customer account or endpoint."
+  },
+  {
+   "m": "Any OpenAI-compatible endpoint",
+   "t": "External",
+   "p": "OpenAI-compatible chat completions",
+   "del": "Customer supplies",
+   "st": "Idea",
+   "n": "Customer endpoint."
+  }
+ ],
+ "Q": [
+  {
+   "n": 1,
+   "q": "What format is the AWS image: a machine image, a container image, or something else?",
+   "o": "Jon Roberts",
+   "a": "Make the GitHub project open source. Users build their own image from detailed instructions that include getting an EDB Subscription Token, which lets us track installs. On AWS, use the same token with a provided CloudFormation template (see AIDB Quickstarts).",
+   "s": "Open"
+  },
+  {
+   "n": 2,
+   "q": "Do we publish one full Docker image, or a full tag and a slim tag?",
+   "o": "",
+   "a": "",
+   "s": "Open"
+  },
+  {
+   "n": 3,
+   "q": "Which models do we bundle, and which are pulled on first use?",
+   "o": "Jon Roberts",
+   "a": "Embeddings: local models. LLM: Claude, since the field has access to it and it gives the least friction for demos.",
+   "s": "Open"
+  },
+  {
+   "n": 4,
+   "q": "Which phi-4 class model do we mean, and does it call tools reliably enough for the SQL analyst?",
+   "o": "Torsten Steinbach (to confirm)",
+   "a": "",
+   "s": "Open"
+  },
+  {
+   "n": 5,
+   "q": "What eval licence terms cover the EDB components, the models and the sample data?",
+   "o": "Jon Roberts",
+   "a": "The EULA allows a trial for internal demonstration, test or evaluation during the term of the offering. The get-your-token page says 60 days. Standard EULA and terms apply.",
+   "s": "Open"
+  },
+  {
+   "n": 6,
+   "q": "How do we count downloads of the image?",
+   "o": "To assign",
+   "a": "GitHub?",
+   "s": "Open"
+  },
+  {
+   "n": 7,
+   "q": "Where do feature requests and bugs go?",
+   "o": "To assign",
+   "a": "Jira. Rajesh owns.",
+   "s": "Open"
+  },
+  {
+   "n": 8,
+   "q": "Do the AIDB 7.8 traces carry token usage, so a savings counter can read them?",
+   "o": "To assign",
+   "a": "",
+   "s": "Open"
+  },
+  {
+   "n": 9,
+   "q": "How does a customer add an external model key on first run?",
+   "o": "Jon Roberts",
+   "a": "The notebook code provides the pattern to create the models.",
+   "s": "Open"
+  },
+  {
+   "n": 10,
+   "q": "Should we consider partnering with an LLM inference provider?",
+   "o": "",
+   "a": "",
+   "s": "Open"
+  },
+  {
+   "n": 11,
+   "q": "Should we include WHPG or just PG?",
+   "o": "",
+   "a": "PG only for v1.",
+   "s": "Closed"
+  },
+  {
+   "n": 12,
+   "q": "Legal",
+   "o": "",
+   "a": "",
+   "s": "Open"
+  },
+  {
+   "n": 13,
+   "q": "UI approval and design",
+   "o": "",
+   "a": "",
+   "s": "Open"
+  }
+ ],
+ "NB": "https://github.com/EnterpriseDB/aidb-quickstarts/tree/main/notebooks"
+}
