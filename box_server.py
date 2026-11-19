@@ -695,4 +695,7 @@ if __name__ == "__main__":
         print("Open the ports in your firewall / EC2 security group, and prefer HTTPS or an SSH tunnel on untrusted networks.")
     else:
         print("AI in the Box  ->  http://127.0.0.1:%d" % PORT)
+    if os.environ.get("AIBOX_JUPYTER_AUTOSTART", "") not in ("", "0"):   # the all-in-one Docker image starts JupyterLab with the app
+        JUP.update({"state": "installing", "error": "", "token": os.environ.get("AIBOX_JUPYTER_TOKEN") or secrets.token_urlsafe(18)})
+        threading.Thread(target=jupyter_worker, daemon=True).start()
     app.run(host=HOST, port=PORT, debug=False)

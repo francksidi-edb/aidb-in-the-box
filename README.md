@@ -70,6 +70,20 @@ Options: `--version 18`, `--flavor as|pg|pge` (EDB Postgres Advanced Server by d
 
 Amazon Linux is not on the support list, so on EC2 pick RHEL 9, Rocky 9, Ubuntu 22.04/24.04 or Debian 12 (or use `--docker`).
 
+## Everything in one Docker container
+
+`./docker-box.sh` (or `./start.sh --docker`) builds and runs one container with EDB Postgres Advanced Server and AIDB, the app, the AIDB Introspector and JupyterLab. It is the way to run AI in the Box on a Mac, or on Amazon Linux, where the EDB packages cannot be installed natively.
+
+```bash
+export EDB_SUBSCRIPTION_TOKEN=<your-token>   # or let the script ask; it is a build secret and is not stored in the image
+./docker-box.sh                              # this machine only: http://localhost:8650
+./docker-box.sh --public                     # all addresses (EC2), with a generated password; add --no-auth for testing
+./docker-box.sh --base <image>               # a prebuilt image that already holds EDB Postgres + AIDB: no token needed
+```
+
+Ports: 8650 for the app and the Introspector (`/introspect/`), 8888 for JupyterLab (started with the container; the notebooks page shows the link and token) and 5444 for Postgres. Data lives in the volume `aibox-pgdata`, so `--stop` and `--down` keep it. Logs: `./docker-box.sh --logs`. The container prints the app password at start (user `aibox`).
+Not yet run against the EDB repositories by the author: build it once with a real token and report what breaks.
+
 Limits: AIDB supports Linux only (Debian 12 x86_64/arm64, Ubuntu 22.04/24.04 x86_64, RHEL 8 x86_64 and RHEL 9 x86_64/arm64 and clones). There is no native macOS build, so on a Mac use `--docker` (Docker Desktop on Apple silicon runs linux/arm64). The `aibox` role is a superuser meant for a local demo box. In Docker, Postgres is published on 127.0.0.1:5444 only. PGAA is available on Debian and Ubuntu x86_64 and on RHEL 8/9 x86_64 and arm64 only, so it is skipped on Debian arm64 (including Docker on Apple silicon). These install paths follow the EDB docs but have not been run against the EDB repositories by the author.
 
 ## What is inside

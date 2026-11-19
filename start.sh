@@ -5,11 +5,13 @@
 #   ./start.sh --install-db   install EDB Postgres + AIDB first (./install-edb.sh; add --docker on a Mac)
 #   ./start.sh --update       update the showcase from GitHub, then start
 #   ./start.sh --jupyter      open the demo notebooks in JupyterLab instead
+#   ./start.sh --docker       run everything in ONE Docker container (Postgres + AIDB + app + JupyterLab); see ./docker-box.sh --help
 #   AIBOX_HOST=0.0.0.0 AIBOX_NO_AUTH=1 ./start.sh   same, with no password (testing only)
 #   AIBOX_HOST=0.0.0.0 ./start.sh   listen on all addresses behind a password (user aibox; AIBOX_PASSWORD or a random one)
 # Set AIBOX_NO_BROWSER=1 to skip opening the browser (for example over SSH).
 set -e
 cd "$(dirname "$0")"
+[ "${1:-}" = --docker ] && { shift; exec bash ./docker-box.sh "$@"; }
 [ -f env.sh ] && . ./env.sh
 [ -f venv/bin/activate ] && [ -d aidb-showcase ] || bash ./install.sh
 . venv/bin/activate
