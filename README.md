@@ -42,9 +42,21 @@ Or tunnel instead:
 - **A Claude API key** for the notebooks. Each notebook asks for it when you run it. Nothing is stored in the repo.
 - **Internet at setup** for some demos: Hugging Face (Governance, SQL Summarization), irs.gov (RAG over Documents, MCP), and model downloads the first time a local model is used.
 
+## Notebooks
+
+The menu groups the notebooks by what a customer wants to do:
+
+| Group | Notebooks |
+| :-- | :-- |
+| **Agents** | Text-to-SQL, Semantic KB, RAG over Documents, Documents Validation, Conversations Agent, SQL Summarization, MCP and Claude Desktop |
+| **Cost Optimization** | Budgets (iteration caps, token budgets, `budget_strategy`) |
+| **Governance** | Agent Governance, Guardrails and Policy Rules, Audit Log, RBAC and Row-Level Security, Source Citations and Lineage, App-Guardrail Toggle, Prompt Monitoring and Drift, PII Redaction, Policy Dashboard |
+
+The eight Governance notebooks after *Agent Governance* import a helper module, `lab.py`. Put it in `notebooks/` next to them; the app copies it into `notebooks-run/` together with the notebooks.
+
 ## Run the notebooks in Jupyter
 
-Open **Demo notebooks** and press **Start Jupyter**. The app installs JupyterLab on first use (a few minutes), starts it on port 8888 (`AIBOX_JUPYTER_PORT` changes it) with a random token, and shows **Open JupyterLab** and a per-notebook **Open in Jupyter** link. Your notebooks are copied to `notebooks-run/` the first time, so your edits are kept and the originals in `notebooks/` stay untouched. In the copies, the database connection cell is replaced so it uses the same settings as the Connect page (TCP with password) instead of a Unix socket as the OS user; everything else in the notebooks is unchanged. In network mode (`AIBOX_HOST`) Jupyter listens on all addresses too, so open port 8888 in the firewall; the token protects it. `./start.sh --jupyter` still starts JupyterLab on its own, with the original notebooks.
+Open any notebook group (**Agents**, **Cost Optimization** or **Governance**) in the menu and press **Start Jupyter**. The app installs JupyterLab on first use (a few minutes), starts it on port 8888 (`AIBOX_JUPYTER_PORT` changes it) with a random token, and shows **Open JupyterLab** and a per-notebook **Open in Jupyter** link. Your notebooks are copied to `notebooks-run/` the first time, so your edits are kept and the originals in `notebooks/` stay untouched. In the copies, the database connection cell is replaced so it uses the same settings as the Connect page (TCP with password) instead of a Unix socket as the OS user; everything else in the notebooks is unchanged. In network mode (`AIBOX_HOST`) Jupyter listens on all addresses too, so open port 8888 in the firewall; the token protects it. `./start.sh --jupyter` still starts JupyterLab on its own, with the original notebooks.
 
 ## Start and stop Postgres
 
@@ -90,13 +102,18 @@ export EDB_SUBSCRIPTION_TOKEN=<your-token>   # or let the script ask; it is a bu
 Ports: 8650 for the app and the Introspector (`/introspect/`), 8888 for JupyterLab (started with the container; the notebooks page shows the link and token) and 5444 for Postgres. Data lives in the volume `aibox-pgdata`, so `--stop` and `--down` keep it. Logs: `./docker-box.sh --logs`. The container prints the app password at start (user `aibox`).
 Not yet run against the EDB repositories by the author: build it once with a real token and report what breaks.
 
-Limits: AIDB supports Linux only (Debian 12 x86_64/arm64, Ubuntu 22.04/24.04 x86_64, RHEL 8 x86_64 and RHEL 9 x86_64/arm64 and clones). There is no native macOS build, so on a Mac use `--docker` (Docker Desktop on Apple silicon runs linux/arm64). The `aibox` role is a superuser meant for a local demo box. In Docker, Postgres is published on 127.0.0.1:5444 only. PGAA is available on Debian and Ubuntu x86_64 and on RHEL 8/9 x86_64 and arm64 only, so it is skipped on Debian arm64 (including Docker on Apple silicon). These install paths follow the EDB docs but have not been run against the EDB repositories by the author.
+Limits: AIDB supports Linux only (Debian 12 x86_64/arm64, Ubuntu 22.04/24.04 x86_64, RHEL 8 x86_64 and RHEL 9 x86_64/arm64 and clones). There is no native macOS build, so on a Mac use the Docker image (`./docker-box.sh`; Docker Desktop on Apple silicon runs linux/arm64). The `aibox` role is a superuser meant for a local demo box. In Docker, Postgres is published on 127.0.0.1:5444 only. PGAA is available on Debian and Ubuntu x86_64 and on RHEL 8/9 x86_64 and arm64 only, so it is skipped on Debian arm64 (including Docker on Apple silicon). These install paths follow the EDB docs but have not been run against the EDB repositories by the author.
+
+## Deck
+
+`docs/AI-in-the-Box.pptx` is the product overview deck (8 slides: what it is, architecture, from an empty machine to a notebook, the three install options, the System check, what is tested, how to start).
 
 ## What is inside
 
 | Path | Purpose |
 | :-- | :-- |
 | `box_server.py`, `static/` | The app. `static/data.json` lists the notebooks shown in the menu (`g` is `agents`, `cost` or `governance`). |
+| `docs/` | The product overview deck. |
 | `notebooks/` | The demo notebooks: Agents and Budgets (Jon Roberts, unchanged) and the eight Governance notebooks (Lucie). The Governance notebooks import `lab.py`, which must sit in this folder. |
 | `introspector/` | The AIDB Introspector (server and page from francksidi-edb/aidb-showcase), mounted by `introspect_mount.py` at `/introspect/`. The page's API paths are relative so it can live under that prefix |
 | `aidb-showcase/` | Cloned by `install.sh` for its `demo-data` scripts (used by `--setup-demo`). Not committed here. |
