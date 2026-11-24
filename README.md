@@ -8,7 +8,7 @@ Runs on Linux and macOS, arm64 or x86_64. On a blank machine just run `./start.s
 
 ```bash
 cd aidb-in-the-box
-cp env.sh.example env.sh      # then edit: PGHOST, PGPORT, PGDATABASE, PGUSER (and PGPASSWORD if needed)
+cp .env.example .env          # then edit: PGHOST, PGPORT, PGDATABASE, PGUSER, PGPASSWORD
 ./start.sh        # or: bash start.sh
 ```
 
@@ -38,9 +38,33 @@ Or tunnel instead:
 
 ## What you need to provide
 
-- **A Postgres with AIDB.** Either install one with `./install-edb.sh` (below), or point `env.sh` at your own that has the `aidb` extension (`CREATE EXTENSION aidb CASCADE;`). The **System check** page shows what is missing (aidb, vector, edb_vectorplus, pgfs, pg_textsearch, age).
+- **A Postgres with AIDB.** Either install one with `./install-edb.sh` (below), or point `.env` at your own that has the `aidb` extension (`CREATE EXTENSION aidb CASCADE;`). The **System check** page shows what is missing (aidb, vector, edb_vectorplus, pgfs, pg_textsearch, age).
 - **A Claude API key** for the notebooks. Each notebook asks for it when you run it. Nothing is stored in the repo.
 - **Internet at setup** for some demos: Hugging Face (Governance, SQL Summarization), irs.gov (RAG over Documents, MCP), and model downloads the first time a local model is used.
+
+## Connection settings in a `.env` file
+
+Put your database settings in `.env` next to `start.sh` (start from `.env.example`):
+
+```
+PGHOST=127.0.0.1
+PGPORT=5432
+PGDATABASE=postgres
+PGUSER=postgres
+PGPASSWORD="your password"
+```
+
+`./start.sh` (and `python3 box_server.py`) read it at start. The values reach the app **and every notebook**: JupyterLab inherits the environment, and the connection cell in each notebook copy is
+
+```python
+conn = create_engine(
+    "postgresql+psycopg2://%s:%s@%s:%s/%s" % (
+        quote_plus(os.environ.get("PGUSER", "postgres")), quote_plus(os.environ.get("PGPASSWORD", "")),
+        os.environ.get("PGHOST", "127.0.0.1"), os.environ.get("PGPORT", "5432"), os.environ.get("PGDATABASE", "postgres")),
+    pool_pre_ping=True)
+```
+
+so changing `.env` and restarting the app (and JupyterLab) changes every notebook at once. Any other variable in `.env`, for example a model API key, is passed through the same way. Quote values that contain spaces or characters such as `$ & # !`; nothing is expanded. `.env` wins over `env.sh` (written by the Connect page and the installer) and is git-ignored. In the Docker image the connection is preconfigured, so `.env` is not needed there.
 
 ## Notebooks
 
@@ -118,7 +142,8 @@ Limits: AIDB supports Linux only (Debian 12 x86_64/arm64, Ubuntu 22.04/24.04 x86
 | `static/inspect.js` | The Inspect pages in the main UI. They call the read-only backend of the AIDB Introspector. |
 | `introspector/` | The AIDB Introspector backend (server from francksidi-edb/aidb-showcase, unmodified), mounted by `introspect_mount.py` at `/introspect/`. The classic page there still works but the menu no longer links to it. |
 | `aidb-showcase/` | Cloned by `install.sh` for its `demo-data` scripts (used by `--setup-demo`). Not committed here. |
-| `env.sh` | Your connection settings. Git-ignored. |
+| `.env`, `.env.example` | Your connection settings for the app and all notebooks (copy the example). `.env` is git-ignored. `envfile.py` reads it. |
+| `env.sh` | Connection settings written by the Connect page and the installer. Git-ignored. `.env` wins over it. |
 
 The notebooks connect to Postgres over the local Unix socket, so run them on the machine that hosts the database. Reading them in the app needs no database.
 

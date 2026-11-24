@@ -9,3 +9,4 @@ jupyter.log
 .git
 *.zip
 *.tar.gz
+.env

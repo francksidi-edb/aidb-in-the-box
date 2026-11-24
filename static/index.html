@@ -327,6 +327,9 @@ function setup(){
       <label>Password<input id="c-pass" type="password" autocomplete="new-password"></label>
     </div>
     <button class="btn" id="c-go">Test and save</button><div class="res" id="c-res" role="status"></div>
+    <h4>Or set it once in a .env file</h4>
+    <p style="color:var(--muted);font-size:12px;margin:0 0 6px">Create <code>.env</code> next to <code>start.sh</code>. Its settings reach this app and every notebook, which connect with exactly these values. Restart the app (and JupyterLab) after a change. <code>.env</code> wins over the saved Connect settings.</p>
+    <pre class="code"><button data-copy>Copy</button>PGHOST=127.0.0.1\nPGPORT=5432\nPGDATABASE=postgres\nPGUSER=postgres\nPGPASSWORD="your password"</pre>
     <h4>Postgres is on this machine but not set up for AIDB?</h4>
     <p style="color:var(--muted);font-size:12px;margin:0 0 8px">Prepare it: updates <code>shared_preload_libraries</code>, adds the <code>aibox</code> login to <code>pg_hba.conf</code>, restarts, enables the extensions and connects this app. No token needed. Uses the flavor and version from option 2.</p>
     <button class="btn alt" id="s-prep">Prepare this instance for AI in the Box</button>

@@ -9,3 +9,4 @@ install.log
 introspector/.aidb_introspect_config.json
 notebooks-run/
 jupyter.log
+.env

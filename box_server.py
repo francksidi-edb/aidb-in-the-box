@@ -30,6 +30,9 @@ import urllib.request
 from flask import Flask, Response, abort, jsonify, request, send_from_directory
 
 BASE = os.path.dirname(os.path.abspath(__file__))
+
+import envfile  # noqa: E402
+ENVFILE_KEYS = envfile.apply(os.path.join(BASE, ".env"))   # .env settings reach the app and every notebook (Jupyter inherits them)
 STATIC = os.path.join(BASE, "static")
 NOTEBOOKS = os.path.join(BASE, "notebooks")
 PORT = int(os.environ.get("AIBOX_PORT", "8650"))
@@ -687,6 +690,7 @@ def notebook_download(name):
 
 extend_path()
 load_env_file()
+envfile.apply(os.path.join(BASE, ".env"))   # .env wins over env.sh
 
 # The AIDB Introspector lives at /introspect/ (same origin, same password, no extra port).
 from werkzeug.middleware.dispatcher import DispatcherMiddleware  # noqa: E402

@@ -8,6 +8,7 @@
 #   ./start.sh --docker       run everything in ONE Docker container (Postgres + AIDB + app + JupyterLab); see ./docker-box.sh --help
 #   AIBOX_HOST=0.0.0.0 AIBOX_NO_AUTH=1 ./start.sh   same, with no password (testing only)
 #   AIBOX_HOST=0.0.0.0 ./start.sh   listen on all addresses behind a password (user aibox; AIBOX_PASSWORD or a random one)
+# Settings: copy .env.example to .env (PGHOST, PGPORT, PGDATABASE, PGUSER, PGPASSWORD, ...). They apply to the app and all notebooks.
 # Set AIBOX_NO_BROWSER=1 to skip opening the browser (for example over SSH).
 set -e
 cd "$(dirname "$0")"
@@ -15,6 +16,8 @@ cd "$(dirname "$0")"
 [ -f env.sh ] && . ./env.sh
 [ -f venv/bin/activate ] && [ -d aidb-showcase ] || bash ./install.sh
 . venv/bin/activate
+# .env (see .env.example) wins over env.sh: its PG* settings reach the app and every notebook.
+[ -f .env ] && eval "$(python3 envfile.py .env)" && echo "Loaded settings from .env"
 export AIBOX_PORT="${AIBOX_PORT:-8650}"
 
 case "${1:-}" in
