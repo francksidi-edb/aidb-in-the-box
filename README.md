@@ -1,6 +1,6 @@
 # AI in the Box
 
-A local app for trying EDB Postgres AI (AIDB): demo notebooks grouped as Agents, Cost Optimization and Governance that you can read and download, a system check for your Postgres, and the built-in AIDB Introspector (browse models, agents, tools, knowledge bases, pipelines and functions, with a read-only SQL console), all started with one command.
+A local app for trying EDB Postgres AI (AIDB): demo notebooks grouped as Agents, Cost Optimization and Governance that you can read and download, a system check for your Postgres, and **Inspect** pages built into the app (models, agents and tools, knowledge bases, pipelines and storage, functions, and a read-only SQL console), all started with one command.
 
 Runs on Linux and macOS, arm64 or x86_64. On a blank machine just run `./start.sh`: `./install.sh` finds what is missing (python3 3.9+ with venv, git, the `psql` client) and installs it with apt, dnf, yum or Homebrew after asking (set `AIBOX_YES=1` to skip the question). Root or sudo is needed for that. If no `psql` can be installed the app still starts, and **Connect & install** or `./install-edb.sh` can provide one.
 
@@ -16,7 +16,7 @@ The first run calls `./install.sh`: it creates the virtualenv `./venv`, installs
 
 | Command | What it does |
 | :-- | :-- |
-| `./start.sh` | AI in the Box on port 8650, with the AIDB Introspector at `/introspect/` |
+| `./start.sh` | AI in the Box on port 8650, with the Inspect pages in the menu |
 | `./start.sh --setup-demo` | Loads the Northwind demo data and AIDB objects (the showcase's `demo-data` scripts), then starts |
 | `./start.sh --install-db` | Runs `./install-edb.sh` first (installs EDB Postgres with AIDB), then starts. Add `--docker` on a Mac |
 | `./start.sh --update` | Updates the showcase from GitHub, then starts |
@@ -31,7 +31,7 @@ By default the app listens on 127.0.0.1 only. To reach them from other machines,
 AIBOX_HOST=0.0.0.0 AIBOX_PASSWORD='choose-one' ./start.sh     # user: aibox (a random password is printed if you set none)
 ```
 
-Then open `http://<machine-ip>:8650` and open that port in the firewall or EC2 security group. The Introspector is part of the same app, so it uses the same port and password. Network mode uses plain HTTP, so on untrusted networks restrict the security group to your own IP or use the tunnel below. This app can install software and save database passwords, which is why it will not listen on the network without a password.
+Then open `http://<machine-ip>:8650` and open that port in the firewall or EC2 security group. The Inspect pages are part of the same app, so they use the same port and password. Network mode uses plain HTTP, so on untrusted networks restrict the security group to your own IP or use the tunnel below. This app can install software and save database passwords, which is why it will not listen on the network without a password.
 
 Or tunnel instead:
 `ssh -L 8650:127.0.0.1:8650 user@box`
@@ -90,7 +90,7 @@ Amazon Linux is not on the support list, so on EC2 pick RHEL 9, Rocky 9, Ubuntu 
 
 ## Everything in one Docker container
 
-`./docker-box.sh` (or `./start.sh --docker`) builds and runs one container with EDB Postgres Advanced Server and AIDB, the app, the AIDB Introspector and JupyterLab. It is the way to run AI in the Box on a Mac, or on Amazon Linux, where the EDB packages cannot be installed natively.
+`./docker-box.sh` (or `./start.sh --docker`) builds and runs one container with EDB Postgres Advanced Server and AIDB, the app (with its Inspect pages) and JupyterLab. It is the way to run AI in the Box on a Mac, or on Amazon Linux, where the EDB packages cannot be installed natively.
 
 ```bash
 export EDB_SUBSCRIPTION_TOKEN=<your-token>   # or let the script ask; it is a build secret and is not stored in the image
@@ -99,7 +99,7 @@ export EDB_SUBSCRIPTION_TOKEN=<your-token>   # or let the script ask; it is a bu
 ./docker-box.sh --base <image>               # a prebuilt image that already holds EDB Postgres + AIDB: no token needed
 ```
 
-Ports: 8650 for the app and the Introspector (`/introspect/`), 8888 for JupyterLab (started with the container; the notebooks page shows the link and token) and 5444 for Postgres. Data lives in the volume `aibox-pgdata`, so `--stop` and `--down` keep it. Logs: `./docker-box.sh --logs`. The container prints the app password at start (user `aibox`).
+Ports: 8650 for the app, 8888 for JupyterLab (started with the container; the notebooks page shows the link and token) and 5444 for Postgres. Data lives in the volume `aibox-pgdata`, so `--stop` and `--down` keep it. Logs: `./docker-box.sh --logs`. The container prints the app password at start (user `aibox`).
 Not yet run against the EDB repositories by the author: build it once with a real token and report what breaks.
 
 Limits: AIDB supports Linux only (Debian 12 x86_64/arm64, Ubuntu 22.04/24.04 x86_64, RHEL 8 x86_64 and RHEL 9 x86_64/arm64 and clones). There is no native macOS build, so on a Mac use the Docker image (`./docker-box.sh`; Docker Desktop on Apple silicon runs linux/arm64). The `aibox` role is a superuser meant for a local demo box. In Docker, Postgres is published on 127.0.0.1:5444 only. PGAA is available on Debian and Ubuntu x86_64 and on RHEL 8/9 x86_64 and arm64 only, so it is skipped on Debian arm64 (including Docker on Apple silicon). These install paths follow the EDB docs but have not been run against the EDB repositories by the author.
@@ -115,7 +115,8 @@ Limits: AIDB supports Linux only (Debian 12 x86_64/arm64, Ubuntu 22.04/24.04 x86
 | `box_server.py`, `static/` | The app. `static/data.json` lists the notebooks shown in the menu (`g` is `agents`, `cost` or `governance`). |
 | `docs/` | The product overview deck. |
 | `notebooks/` | The demo notebooks: Agents and Budgets (Jon Roberts, unchanged) and the eight Governance notebooks (Lucie). The Governance notebooks import `lab.py`, which must sit in this folder. |
-| `introspector/` | The AIDB Introspector (server and page from francksidi-edb/aidb-showcase), mounted by `introspect_mount.py` at `/introspect/`. The page's API paths are relative so it can live under that prefix |
+| `static/inspect.js` | The Inspect pages in the main UI. They call the read-only backend of the AIDB Introspector. |
+| `introspector/` | The AIDB Introspector backend (server from francksidi-edb/aidb-showcase, unmodified), mounted by `introspect_mount.py` at `/introspect/`. The classic page there still works but the menu no longer links to it. |
 | `aidb-showcase/` | Cloned by `install.sh` for its `demo-data` scripts (used by `--setup-demo`). Not committed here. |
 | `env.sh` | Your connection settings. Git-ignored. |
 
