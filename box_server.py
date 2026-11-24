@@ -259,6 +259,7 @@ def install():
     token = str(d.get("token") or "").strip()
     docker, check = bool(d.get("docker")), bool(d.get("check"))
     conf_only = bool(d.get("configure_only"))
+    remote = bool(d.get("remote"))
     if flavor not in ("as", "pg", "pge") or not re.fullmatch(r"1[4-9]", version) or (repo and not re.fullmatch(r"[a-z0-9_-]{1,40}", repo)):
         return jsonify({"ok": False, "error": "Invalid options."}), 400
     if not check and not conf_only and not re.fullmatch(r"[A-Za-z0-9_.~-]{8,200}", token):
@@ -281,6 +282,8 @@ def install():
             args.append("--check")
         env = os.environ.copy()
         env["TERM"] = "dumb"
+        if remote:
+            env["AIBOX_REMOTE"] = "1"   # listen on all addresses, port 5444, and add the 0.0.0.0/0 pg_hba.conf line (edb/configure.sh)
         if token and not check and not conf_only:
             env["EDB_SUBSCRIPTION_TOKEN"] = token
         else:
@@ -530,6 +533,9 @@ def prepare_notebooks():
     """Copy the demo notebooks to notebooks-run/ (never overwriting your edits) with the database connection cell
     pointed at this app's connection instead of a local Unix socket as the OS user."""
     os.makedirs(JUP_DIR, exist_ok=True)
+    for f in sorted(os.listdir(NOTEBOOKS)):   # helper modules the Governance notebooks import (lab.py) sit next to them
+        if f.endswith(".py") and not os.path.exists(os.path.join(JUP_DIR, f)):
+            shutil.copy(os.path.join(NOTEBOOKS, f), os.path.join(JUP_DIR, f))
     for f in nb_files():
         dst = os.path.join(JUP_DIR, f)
         if os.path.exists(dst):

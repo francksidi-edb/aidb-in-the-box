@@ -1,6 +1,6 @@
 # AI in the Box
 
-A local app for trying EDB Postgres AI (AIDB): a catalog of what goes into the box, nine demo notebooks you can read and download, a system check for your Postgres, and the built-in AIDB Introspector (browse models, agents, tools, knowledge bases, pipelines and functions, with a read-only SQL console), all started with one command.
+A local app for trying EDB Postgres AI (AIDB): demo notebooks grouped as Agents, Cost Optimization and Governance that you can read and download, a system check for your Postgres, and the built-in AIDB Introspector (browse models, agents, tools, knowledge bases, pipelines and functions, with a read-only SQL console), all started with one command.
 
 Runs on Linux and macOS, arm64 or x86_64. On a blank machine just run `./start.sh`: `./install.sh` finds what is missing (python3 3.9+ with venv, git, the `psql` client) and installs it with apt, dnf, yum or Homebrew after asking (set `AIBOX_YES=1` to skip the question). Root or sudo is needed for that. If no `psql` can be installed the app still starts, and **Connect & install** or `./install-edb.sh` can provide one.
 
@@ -50,9 +50,15 @@ Open **Demo notebooks** and press **Start Jupyter**. The app installs JupyterLab
 
 **Connect & install** also has a **Database service** panel with Start, Stop, Restart and Reload config. It finds the service on this machine (a systemd unit such as `edb-as-18`, `edb-pge-18` or `postgresql-18`; the Debian `epas_ctlcluster` / `pg_ctlcluster` tools; or a data directory such as `/var/lib/edb/as18/data` driven with `pg_ctl` as the directory's owner). The app needs root or passwordless sudo to control it; otherwise the buttons are disabled and the panel says why.
 
-## Install EDB Postgres with AIDB
+## Three ways to get a Postgres with AIDB
 
-You can do all of this from the app: open **Connect & install** in the menu. Paste your token to install (native or Docker), or enter host, port, database, user and password to connect to a database you already have. The token goes only to the local app, is hidden from the log and is never saved. Installing packages from the page needs the app to run as root or with passwordless sudo; otherwise use the terminal commands below.
+**Connect & install** in the app offers three options:
+
+1. **Run the Docker image.** One container with everything packaged (see below). `./docker-box.sh --image <registry>/aibox:latest` runs a prebuilt image, `./docker-box.sh` builds it with your token.
+2. **Install from scratch.** Paste your EDB token. The installer adds the repositories and packages, appends `aidb` (and `pg_textsearch`, `pgaa`, `pgfs` when installed) to `shared_preload_libraries`, adds `scram-sha-256` lines for the `aibox` login to `pg_hba.conf` (plus `0.0.0.0/0` and `listen_addresses = '*'` if you ask for remote access), restarts Postgres and enables the extensions.
+3. **Use my own Postgres.** Enter host, port, database, user and password. If Postgres is on this machine but not set up for AIDB, **Prepare this instance** applies the same `shared_preload_libraries` and `pg_hba.conf` changes without a token.
+
+Details of option 2: The token goes only to the local app, is hidden from the log and is never saved. Installing packages from the page needs the app to run as root or with passwordless sudo; otherwise use the terminal commands below.
 
 ```bash
 export EDB_SUBSCRIPTION_TOKEN=...   # or let the script ask. A free EDB account gives a 60-day trial.
@@ -90,12 +96,12 @@ Limits: AIDB supports Linux only (Debian 12 x86_64/arm64, Ubuntu 22.04/24.04 x86
 
 | Path | Purpose |
 | :-- | :-- |
-| `box_server.py`, `static/` | The app. `static/data.json` holds the catalog: 49 sheet rows, 9 demos, 19 models, 13 open questions. |
-| `notebooks/` | Jon Roberts' nine demo notebooks, unchanged. |
+| `box_server.py`, `static/` | The app. `static/data.json` lists the notebooks shown in the menu (`g` is `agents`, `cost` or `governance`). |
+| `notebooks/` | The demo notebooks: Agents and Budgets (Jon Roberts, unchanged) and the eight Governance notebooks (Lucie). The Governance notebooks import `lab.py`, which must sit in this folder. |
 | `introspector/` | The AIDB Introspector (server and page from francksidi-edb/aidb-showcase), mounted by `introspect_mount.py` at `/introspect/`. The page's API paths are relative so it can live under that prefix |
 | `aidb-showcase/` | Cloned by `install.sh` for its `demo-data` scripts (used by `--setup-demo`). Not committed here. |
 | `env.sh` | Your connection settings. Git-ignored. |
 
 The notebooks connect to Postgres over the local Unix socket, so run them on the machine that hosts the database. Reading them in the app needs no database.
 
-To change the catalog, edit `static/data.json` and reload the page.
+To add a notebook, copy it to `notebooks/`, add an entry to `static/data.json` and reload the page.
