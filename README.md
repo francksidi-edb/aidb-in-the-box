@@ -12,7 +12,7 @@ cp .env.example .env          # then edit: PGHOST, PGPORT, PGDATABASE, PGUSER, P
 ./start.sh        # or: bash start.sh
 ```
 
-The first run calls `./install.sh`: it creates the virtualenv `./venv`, installs Flask, and clones the showcase into `./aidb-showcase`. Then it opens http://127.0.0.1:8650. Press Ctrl-C to stop.
+The first run calls `./install.sh`: it creates the virtualenv `./venv`, installs Flask, and clones the showcase into `./aidb-showcase`. Then it opens http://127.0.0.1:8650. Press Ctrl-C to stop. `.env` is loaded at start and applies to the app and to every notebook (see *Connection settings in a `.env` file* below).
 
 | Command | What it does |
 | :-- | :-- |
@@ -20,7 +20,7 @@ The first run calls `./install.sh`: it creates the virtualenv `./venv`, installs
 | `./start.sh --setup-demo` | Loads the Northwind demo data and AIDB objects (the showcase's `demo-data` scripts), then starts |
 | `./start.sh --install-db` | Runs `./install-edb.sh` first (installs EDB Postgres with AIDB), then starts. Add `--docker` on a Mac |
 | `./start.sh --update` | Updates the showcase from GitHub, then starts |
-| `./start.sh --jupyter` | Opens the notebooks in JupyterLab (installs jupyterlab, jupysql, pandas, datasets) |
+| `./start.sh --jupyter` | Opens the original notebooks in JupyterLab (installs jupyterlab, jupysql, pandas, datasets). They connect over the local socket and do not use `.env`; use the **Start Jupyter** button in the app for notebooks that do |
 | `AIBOX_NO_BROWSER=1 ./start.sh` | Does not open a browser (use over SSH) |
 
 If `./venv` cannot be created on Debian or Ubuntu, install `python3-venv` and run `./install.sh` again.
