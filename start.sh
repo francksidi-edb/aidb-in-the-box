@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Start AI in the Box (port 8650), which includes the AIDB Introspector. Ctrl-C stops it.
+# Start AI in the Box (port 8650), with its Inspect pages. Ctrl-C stops it.
 #   ./start.sh                start the apps and open the browser
-#   ./start.sh --setup-demo   load the Northwind demo data and AIDB objects first
+#   ./start.sh --setup-demo   load the optional Northwind demo data (needs ./aidb-showcase, which is not required)
 #   ./start.sh --install-db   install EDB Postgres + AIDB first (./install-edb.sh; add --docker on a Mac)
-#   ./start.sh --update       update the showcase from GitHub, then start
+#   ./start.sh --update       update this checkout (git pull), then start
 #   ./start.sh --jupyter      open the demo notebooks in JupyterLab instead
 #   ./start.sh --docker       run everything in ONE Docker container (Postgres + AIDB + app + JupyterLab); see ./docker-box.sh --help
 #   AIBOX_HOST=0.0.0.0 AIBOX_NO_AUTH=1 ./start.sh   same, with no password (testing only)
@@ -14,7 +14,7 @@ set -e
 cd "$(dirname "$0")"
 [ "${1:-}" = --docker ] && { shift; exec bash ./docker-box.sh "$@"; }
 [ -f env.sh ] && . ./env.sh
-[ -f venv/bin/activate ] && [ -d aidb-showcase ] || bash ./install.sh
+[ -f venv/bin/activate ] || bash ./install.sh
 . venv/bin/activate
 # .env (see .env.example) wins over env.sh: its PG* settings reach the app and every notebook.
 [ -f .env ] && eval "$(python3 envfile.py .env)" && echo "Loaded settings from .env"
@@ -25,10 +25,11 @@ case "${1:-}" in
     shift; bash ./install-edb.sh "$@"; [ -f env.sh ] && . ./env.sh
     ;;
   --update)
-    (cd aidb-showcase && git pull --ff-only) || echo "Could not update the showcase (not a git checkout?). Continuing."
+    git pull --ff-only || echo "Could not update (not a git checkout, or no network). Continuing."
     ;;
   --setup-demo)
-    bash aidb-showcase/demo-data/run_demo_setup.sh
+    if [ -f aidb-showcase/demo-data/run_demo_setup.sh ]; then bash aidb-showcase/demo-data/run_demo_setup.sh
+    else echo "No demo data installed. It is optional: every notebook builds its own sample data. To use the extra Northwind data, clone github.com/francksidi-edb/aidb-showcase into ./aidb-showcase and run this again."; fi
     ;;
   --jupyter)
     pip install -q jupyterlab jupysql sqlalchemy psycopg2-binary pandas datasets
@@ -49,7 +50,7 @@ case "$AIBOX_HOST" in
 esac
 
 URL="http://127.0.0.1:${AIBOX_PORT}"
-echo "AI in the Box: $URL      (the AIDB Introspector is built in: $URL/introspect/)"
+echo "AI in the Box: $URL"
 case "$AIBOX_HOST" in 127.0.0.1|localhost|::1) ;; *) echo "From other machines: http://<this-machine-ip>:${AIBOX_PORT}  (open port ${AIBOX_PORT} in the firewall or EC2 security group)";; esac
 if [ -z "${AIBOX_NO_BROWSER:-}" ]; then
   (command -v open >/dev/null && open "$URL") || (command -v xdg-open >/dev/null && xdg-open "$URL" >/dev/null 2>&1) || true

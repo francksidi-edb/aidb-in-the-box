@@ -12,14 +12,14 @@ cp .env.example .env          # then edit: PGHOST, PGPORT, PGDATABASE, PGUSER, P
 ./start.sh        # or: bash start.sh
 ```
 
-The first run calls `./install.sh`: it creates the virtualenv `./venv`, installs Flask, and clones the showcase into `./aidb-showcase`. Then it opens http://127.0.0.1:8650. Press Ctrl-C to stop. `.env` is loaded at start and applies to the app and to every notebook (see *Connection settings in a `.env` file* below).
+The first run calls `./install.sh`: it creates the virtualenv `./venv`, and installs Flask. It needs no other download from GitHub. Then it opens http://127.0.0.1:8650. Press Ctrl-C to stop. `.env` is loaded at start and applies to the app and to every notebook (see *Connection settings in a `.env` file* below).
 
 | Command | What it does |
 | :-- | :-- |
 | `./start.sh` | AI in the Box on port 8650, with the Inspect pages in the menu |
-| `./start.sh --setup-demo` | Loads the Northwind demo data and AIDB objects (the showcase's `demo-data` scripts), then starts |
+| `./start.sh --setup-demo` | Optional. Loads the extra Northwind demo data if you cloned `aidb-showcase` into `./aidb-showcase`; otherwise says it is not needed (every notebook builds its own sample data) |
 | `./start.sh --install-db` | Runs `./install-edb.sh` first (installs EDB Postgres with AIDB), then starts. Add `--docker` on a Mac |
-| `./start.sh --update` | Updates the showcase from GitHub, then starts |
+| `./start.sh --update` | Runs `git pull` in this checkout, then starts |
 | `./start.sh --jupyter` | Opens the original notebooks in JupyterLab (installs jupyterlab, jupysql, pandas, datasets). They connect over the local socket and do not use `.env`; use the **Start Jupyter** button in the app for notebooks that do |
 | `AIBOX_NO_BROWSER=1 ./start.sh` | Does not open a browser (use over SSH) |
 
@@ -141,7 +141,7 @@ Limits: AIDB supports Linux only (Debian 12 x86_64/arm64, Ubuntu 22.04/24.04 x86
 | `notebooks/` | The demo notebooks: Agents and Budgets (Jon Roberts, unchanged) and the eight Governance notebooks (Lucie). The Governance notebooks import `lab.py`, which must sit in this folder. |
 | `static/inspect.js` | The Inspect pages in the main UI. They call the read-only backend of the AIDB Introspector. |
 | `introspector/` | The AIDB Introspector backend (server from francksidi-edb/aidb-showcase, unmodified), mounted by `introspect_mount.py` at `/introspect/`. The classic page there still works but the menu no longer links to it. |
-| `aidb-showcase/` | Cloned by `install.sh` for its `demo-data` scripts (used by `--setup-demo`). Not committed here. |
+| `aidb-showcase/` | Optional and never downloaded for you. Only used by `--setup-demo` if you cloned it yourself. |
 | `.env`, `.env.example` | Your connection settings for the app and all notebooks (copy the example). `.env` is git-ignored. `envfile.py` reads it. |
 | `env.sh` | Connection settings written by the Connect page and the installer. Git-ignored. `.env` wins over it. |
 

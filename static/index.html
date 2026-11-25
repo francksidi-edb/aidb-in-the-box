@@ -394,10 +394,10 @@ function statusHtml(s){
     h+=(s.extensions||[]).map(e=>row(!!e.installed,e.name,e.installed?'Installed, version '+esc(e.installed):(e.available?'Available. Run <code>CREATE EXTENSION '+esc(e.name)+(e.name==='aidb'||e.name==='edb_vectorplus'?' CASCADE':'')+';</code>':(e.name==='aidb'?'Not available on this server. Open <a href="#setup">Connect &amp; install</a> to install EDB Postgres with AIDB (Linux), or install it in Docker (Mac).':'Not available on this server.')))).join('');
     const todo=(s.extensions||[]).some(e=>e.available&&!e.installed&&e.name!=='age'&&e.name!=='vector');
     if(todo) h+='<div style="grid-column:1/-1;margin-top:6px"><button class="btn" id="enable-all">Enable the AI extensions</button> <span style="color:var(--muted);font-size:12px">Adds aidb (and pg_textsearch, pgaa) to shared_preload_libraries, restarts Postgres, then runs CREATE EXTENSION for each. Needs a superuser login and the ability to restart Postgres.</span><div class="res" id="en-res" role="status"></div></div>';
-    h+=row(s.demo_data,'Showcase demo data (schema shop)',s.demo_data?'Loaded.':'Not loaded. Run <code>./start.sh --setup-demo</code>.');
+    h+=row(s.demo_data,'Optional Northwind demo data (schema shop)',s.demo_data?'Loaded.':'Not loaded. Optional: the notebooks build their own sample data.');
     if(s.aidb_counts) h+=row(true,'AIDB objects',s.aidb_counts.models+' models, '+s.aidb_counts.agents+' agents registered.');
   }
-  h+=row(true,'Inspect pages','Built in: open Inspect in the menu.')+row(s.showcase_installed,'Showcase demo-data scripts',s.showcase_installed?'Present in <code>./aidb-showcase/demo-data</code>.':'Not installed. Run <code>./install.sh</code>.');
+  h+=row(true,'Inspect pages','Built in: open Inspect in the menu.');
   return h+'</div>';
 }
 function connPill(){

@@ -93,19 +93,7 @@ pip install -q flask || die "pip could not install Flask. Check your network or 
 python -c "import flask" || die "Flask is not importable in ./venv."
 echo "    ready: $(python --version 2>&1), Flask $(python -c 'import flask,importlib.metadata as m;print(m.version("flask"))')"
 
-say "2/3  AIDB Showcase (github.com/francksidi-edb/aidb-showcase)"
-if [ -d aidb-showcase ]; then
-  echo "    already present: ./aidb-showcase  (update with: ./start.sh --update)"
-elif command -v git >/dev/null; then
-  git clone --depth 1 https://github.com/francksidi-edb/aidb-showcase.git aidb-showcase
-elif command -v curl >/dev/null; then
-  mkdir aidb-showcase
-  curl -fsSL https://github.com/francksidi-edb/aidb-showcase/archive/refs/heads/main.tar.gz | tar -xz --strip-components=1 -C aidb-showcase
-else
-  die "Need git or curl to fetch the showcase."
-fi
-
-say "3/3  Connection settings"
-if [ ! -f env.sh ]; then cp env.sh.example env.sh; echo "    created env.sh - edit it to point at your Postgres"; else echo "    env.sh exists"; fi
+say "2/3  Connection settings"
+if [ ! -f env.sh ]; then cp env.sh.example env.sh; echo "    created env.sh - edit it, or put the settings in .env (see .env.example)"; else echo "    env.sh exists"; fi
 
 say "Done. Next:  ./start.sh"
