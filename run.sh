@@ -1,1 +1,0 @@
-AIBOX_HOST=0.0.0.0 AIBOX_NO_AUTH=1 ./start.sh

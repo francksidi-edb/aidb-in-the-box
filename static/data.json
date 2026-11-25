@@ -2,7 +2,7 @@
  "D": [
   {
    "n": "Text-to-SQL Agent",
-   "f": "AIDB_Agents_-_Text-to-SQL.ipynb",
+   "f": "AIDB Agents - Text-to-SQL.ipynb",
    "ids": [],
    "blurb": "Ask questions about a table in plain English. The agent finds the table, writes read-only SQL, runs it and explains the result.",
    "data": "public.foods, 5,000 generated rows across 8 food categories (created in the notebook)",
@@ -24,7 +24,7 @@
   },
   {
    "n": "Semantic KB",
-   "f": "AIDB_Agents_-_Semantic_KB.ipynb",
+   "f": "AIDB Agents - Semantic KB.ipynb",
    "ids": [],
    "blurb": "Index a schema, not the data, so an agent can find tables, work out joins and answer in conversation.",
    "data": "banking schema: 6 tables with comments (7 branches, 15 customers, 25 accounts, ~50 transactions, 15 loans, ~30 payments)",
@@ -50,7 +50,7 @@
   },
   {
    "n": "RAG over Documents",
-   "f": "AIDB_Agents_-_RAG_over_Documents.ipynb",
+   "f": "AIDB Agents - RAG over Documents.ipynb",
    "ids": [],
    "blurb": "Two knowledge bases, a table and two PDFs, and one agent that picks the right source for each question.",
    "data": "public.food_notes (12 notes) and two IRS PDFs: i1040gi.pdf and p17.pdf",
@@ -75,7 +75,7 @@
   },
   {
    "n": "Agent Governance",
-   "f": "AIDB_Agents_-_Governance.ipynb",
+   "f": "AIDB Agents - Governance.ipynb",
    "ids": [],
    "blurb": "Two agents with identical instructions see different data, because each runs as a different database role.",
    "data": "cc_raw.credit_card_transactions, 100,000 sampled rows from Hugging Face pointe77/credit-card-transaction",
@@ -97,7 +97,7 @@
   },
   {
    "n": "Documents Validation",
-   "f": "AIDB_Agents_-_Documents_Validation.ipynb",
+   "f": "AIDB Agents - Documents Validation.ipynb",
    "ids": [],
    "blurb": "Extract fields from customs PDFs with an agent, check them with plain SQL rules, then explain the findings.",
    "data": "18 sample customs PDFs, 3 shipments with 6 documents each (Mexico to US auto parts)",
@@ -121,7 +121,7 @@
   },
   {
    "n": "Conversations Agent",
-   "f": "AIDB_Agents_-_Conversations_Agent.ipynb",
+   "f": "AIDB Agents - Conversations Agent.ipynb",
    "ids": [],
    "blurb": "Turn the agent conversation log into a knowledge base and put an agent on top of it.",
    "data": "public.aidb_conversations, built from aidb.conversation_log (run after the other demos)",
@@ -142,7 +142,7 @@
   },
   {
    "n": "Budgets",
-   "f": "AIDB_Agents_-_Budgets.ipynb",
+   "f": "AIDB Agents - Budgets.ipynb",
    "ids": [],
    "blurb": "Cap what an agent can spend, and see what happens when it hits the cap.",
    "data": "supply_chain schema, 16 tables (about 5,000 sales orders, 15,000 order lines, 1,500 PO lines)",
@@ -167,7 +167,7 @@
   },
   {
    "n": "SQL Summarization",
-   "f": "AIDB_SQL_-_Summarization.ipynb",
+   "f": "AIDB SQL - Summarization.ipynb",
    "ids": [],
    "blurb": "Call an LLM from plain SQL, per row or aggregated across a group, with built-in or custom prompts.",
    "data": "public.movie_reviews from Hugging Face frankier/processed_multiscale_rt_critics",
@@ -189,7 +189,7 @@
   },
   {
    "n": "MCP and Claude Desktop",
-   "f": "AIDB_MCP_-_Claude_Desktop_Integration.ipynb",
+   "f": "AIDB MCP - Claude Desktop Integration.ipynb",
    "ids": [],
    "blurb": "Expose an AIDB tool to Claude Desktop over the MCP endpoint, run as a restricted database role.",
    "data": "The IRS PDFs knowledge base from the RAG demo, with tool search_tax_docs",
@@ -212,7 +212,7 @@
   },
   {
    "n": "Guardrails and Policy Rules",
-   "f": "AIDB_Governance_-_Guardrails_and_Policy_Rules.ipynb",
+   "f": "AIDB Governance - Guardrails and Policy Rules.ipynb",
    "ids": [],
    "g": "governance",
    "blurb": "Block or flag prompt injection, jailbreaks, off-topic requests and forbidden actions before the model is called. Rules are rows the governance team can change.",
@@ -235,7 +235,7 @@
   },
   {
    "n": "Audit Log",
-   "f": "AIDB_Governance_-_Audit_Log.ipynb",
+   "f": "AIDB Governance - Audit Log.ipynb",
    "ids": [],
    "g": "governance",
    "blurb": "Record who asked what, which model answered, which policy fired and the decision, as append-only rows you can query with SQL.",
@@ -258,7 +258,7 @@
   },
   {
    "n": "RBAC and Row-Level Security",
-   "f": "AIDB_Governance_-_RBAC_and_Row-Level_Security.ipynb",
+   "f": "AIDB Governance - RBAC and Row-Level Security.ipynb",
    "ids": [],
    "g": "governance",
    "blurb": "Three personas (analyst, admin, auditor) ask the same agent the same question and see different data, enforced by Postgres.",
@@ -280,7 +280,7 @@
   },
   {
    "n": "Source Citations and Lineage",
-   "f": "AIDB_Governance_-_Source_Citations_and_Lineage.ipynb",
+   "f": "AIDB Governance - Source Citations and Lineage.ipynb",
    "ids": [],
    "g": "governance",
    "blurb": "Every answer lists the documents, rows and model version it used, taken from what the tools actually returned.",
@@ -303,7 +303,7 @@
   },
   {
    "n": "App-Guardrail Toggle",
-   "f": "AIDB_Governance_-_App-Guardrail_Toggle.ipynb",
+   "f": "AIDB Governance - App-Guardrail Toggle.ipynb",
    "ids": [],
    "g": "governance",
    "blurb": "Switch the application-layer controls off and run the same attacks to see that the database layer still protects the data.",
@@ -324,7 +324,7 @@
   },
   {
    "n": "Prompt Monitoring and Drift",
-   "f": "AIDB_Governance_-_Prompt_Monitoring_and_Drift.ipynb",
+   "f": "AIDB Governance - Prompt Monitoring and Drift.ipynb",
    "ids": [],
    "g": "governance",
    "blurb": "Catch requests that drift from an agent's original intent by comparing the prompt to example requests with embeddings inside Postgres.",
@@ -347,7 +347,7 @@
   },
   {
    "n": "PII Redaction",
-   "f": "AIDB_Governance_-_PII_Redaction.ipynb",
+   "f": "AIDB Governance - PII Redaction.ipynb",
    "ids": [],
    "g": "governance",
    "blurb": "Detect and mask e-mail addresses, card numbers, SSNs and phone numbers before the model sees them and before the answer reaches the user.",
@@ -369,7 +369,7 @@
   },
   {
    "n": "Policy Dashboard",
-   "f": "AIDB_Governance_-_Policy_Dashboard.ipynb",
+   "f": "AIDB Governance - Policy Dashboard.ipynb",
    "ids": [],
    "g": "governance",
    "blurb": "Counts of blocked requests, redactions and approvals from one view, an approval queue for write requests, and policy on/off toggles.",

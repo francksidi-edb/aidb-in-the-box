@@ -76,7 +76,7 @@ function insFilter(box,inputSel,rowSel){
 }
 const insSearch=(ph)=>`<div class="toolbar"><input type="search" id="ins-q" placeholder="${ph}" autocomplete="off" style="min-width:260px"><button class="btn alt" id="ins-refresh">Refresh</button></div>`;
 function insNeedsAidb(msg){
-  return `<div class="note"><b>AIDB is not available in this database.</b> ${esc(msg)}<br>Open <a href="#status">System check</a> to enable it, or <a href="#setup">Connect &amp; install</a> to choose another database.</div>`;
+  return `<div class="note"><b>AIDB is not available in this database.</b> ${esc(msg)}<br>The container creates the extension on first start. See the container log: <code>docker compose logs pg</code>.</div>`;
 }
 
 /* ---------- page shell ---------- */
@@ -159,7 +159,7 @@ function insAgentCard(a){
   const tl=Array.isArray(a.tools)?a.tools:[];
   const dl=Array.isArray(a.delegates)?a.delegates:[];
   return `<div class="panel pad agcard" data-t="${esc(JSON.stringify(a).toLowerCase())}">
-    <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline"><h3>${esc(a.name||a.agent_name)}</h3>${a.model?`<span class="tag">${esc(a.model)}</span>`:''}</div>
+    <div class="agh"><h3>${esc(a.name||a.agent_name)}</h3>${a.model?`<span class="tag">${esc(a.model)}</span>`:''}</div>
     ${a.instructions?`<p style="margin:8px 0;color:var(--muted)">${esc(String(a.instructions).slice(0,220))}${String(a.instructions).length>220?'…':''}</p>`:''}
     ${tl.length?`<div style="margin:8px 0 0"><span style="color:var(--muted);font-size:12px">TOOLS</span><div class="chips" style="margin-top:4px">${tl.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div></div>`:''}
     ${dl.length?`<div style="margin:8px 0 0"><span style="color:var(--muted);font-size:12px">DELEGATES TO</span><div class="chips" style="margin-top:4px">${dl.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div></div>`:''}

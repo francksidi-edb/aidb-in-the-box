@@ -1,0 +1,24 @@
+services:
+  pg:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      secrets:
+        - edb_token
+    image: aidb-in-the-box
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "127.0.0.1:5432:5432"   # Postgres
+      - "127.0.0.1:8888:8888"   # Jupyter
+      - "127.0.0.1:8765:8765"   # MCP endpoint
+      - "127.0.0.1:8650:8650"   # AI in the Box (Flask)
+    volumes:
+      - pgdata:/var/lib/pgsql/18/data
+
+secrets:
+  edb_token:
+    environment: EDB_TOKEN
+
+volumes:
+  pgdata:

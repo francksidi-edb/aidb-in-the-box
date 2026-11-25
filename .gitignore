@@ -1,12 +1,4 @@
-env.sh
-venv/
-aidb-showcase/
-showcase.log
 __pycache__/
 *.pyc
 .DS_Store
-install.log
 introspector/.aidb_introspect_config.json
-notebooks-run/
-jupyter.log
-.env
