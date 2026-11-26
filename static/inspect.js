@@ -218,25 +218,39 @@ function inspectPipelines(){
 }
 
 /* ---------- AI SQL functions ---------- */
-/* Only the functions the AIDB docs document, grouped like the docs. The list, a one-line summary and a docs link for each
-   live in static/aidb-functions.json; signatures and definitions are read from the database through the read-only console. */
+/* Only the functions the AIDB docs document, grouped like the docs, each section with the views and tables that go with
+   its functions. The lists, a one-line summary and a docs link for each live in static/aidb-functions.json; signatures,
+   definitions and columns are read from the database. */
 let INS_DOC=null;
 async function insFnDoc(){
   if(!INS_DOC){const r=await fetch('/static/aidb-functions.json');if(!r.ok)throw new Error('Could not load aidb-functions.json ('+r.status+').');INS_DOC=await r.json();}
   return INS_DOC;
 }
 const insDocFns=d=>d.groups.flatMap(g=>g.sections.flatMap(s=>s.functions));
+const insDocViews=d=>d.groups.flatMap(g=>g.sections.flatMap(s=>s.views||[]));
+const insLit=n=>"'"+n.replace(/'/g,"''")+"'";
 async function insQuery(sql){
   const r=await insPost('console',{sql}),res=(r.results||[])[0]||{};
   if(!r.ok||res.status!=='ok'||!res.rows) throw new Error(res.error||r.error||'The query failed.');
   return res.rows.map(row=>Object.fromEntries(res.columns.map((c,i)=>[c,row[i]])));
 }
 async function insSignatures(names){
-  const list=names.map(n=>"'"+n.replace(/'/g,"''")+"'").join(',');
+  const list=names.map(insLit).join(',');
   const rows=await insQuery(`SELECT p.oid, n.nspname || '.' || p.proname AS name, pg_get_function_arguments(p.oid) AS args,
     pg_get_function_result(p.oid) AS result FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
     WHERE n.nspname || '.' || p.proname IN (${list}) ORDER BY 2, 1`);
   const by={};rows.forEach(r=>(by[r.name]=by[r.name]||[]).push(r));return by;
+}
+async function insRelations(names){   // name -> {kind, cols: [[column, type], ...]}; {} when the lookup fails
+  if(!names.length) return {};
+  try{
+    const rows=await insQuery(`SELECT n.nspname || '.' || c.relname AS name, c.relkind AS kind,
+      (SELECT json_agg(json_build_array(a.attname, format_type(a.atttypid, a.atttypmod)) ORDER BY a.attnum) FROM pg_attribute a
+       WHERE a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped) AS cols
+      FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname || '.' || c.relname IN (${names.map(insLit).join(',')})`);
+    const k={r:'table',p:'table',v:'view',m:'materialized view',f:'foreign table'};
+    return Object.fromEntries(rows.map(r=>[r.name,{kind:k[r.kind]||r.kind,cols:typeof r.cols==='string'?JSON.parse(r.cols||'[]'):(r.cols||[])}]));
+  }catch(e){return {};}
 }
 async function insDefinition(f,oid){
   if(f.startsWith('aidb.')){   // the Introspector's own lookup (aidb schema only): source unredacted, aggregate details
@@ -247,46 +261,64 @@ async function insDefinition(f,oid){
   const rows=await insQuery(`SELECT pg_get_functiondef(${+oid}) AS definition`);
   return (rows[0]||{}).definition||'';
 }
+function insShowColumns(td,rel,info){
+  if(!info){td.innerHTML='<span style="color:var(--muted)">Not found in this database.</span>';return;}
+  td.innerHTML=`<div class="mono" style="font-size:12.5px;padding-top:8px;line-height:1.7">${info.cols.map(([c,t])=>`<b>${esc(c)}</b> <span style="color:var(--muted)">${esc(t)}</span>`).join(' &middot; ')}</div>
+    <p style="margin:8px 0 0"><button class="btn alt" data-sql>Query it in the SQL console</button></p>`;
+  td.querySelector('[data-sql]').onclick=e=>{e.stopPropagation();
+    try{sessionStorage.setItem('ins-sql',`SELECT *\nFROM ${rel}\nLIMIT 50;`);}catch(err){}
+    location.hash='inspect-sql';};
+}
 function inspectFunctions(){
-  return insPage('AI SQL functions','The functions documented in the AIDB docs, by docs area. Select a function to read its definition.',async()=>{
+  return insPage('AI SQL functions','The functions documented in the AIDB docs, by docs area, with the views and tables that go with them. Select a row for its definition or columns.',async()=>{
     const doc=await insFnDoc(),base=doc.docs_base;
-    const sigs=await insSignatures(insDocFns(doc).map(f=>f.name));
+    const [sigs,rels]=await Promise.all([insSignatures(insDocFns(doc).map(f=>f.name)),insRelations(insDocViews(doc).map(v=>v.name))]);
     const ext=(u,t)=>`<a href="${esc(base+u)}" target="_blank" rel="noopener">${t}</a>`;
     const sum=t=>esc(t).replace(/`([^`]+)`/g,'<code>$1</code>');
     const row=f=>{const ov=sigs[f.name]||[];
       return `<tr class="fnr" tabindex="0" data-oids="${ov.map(o=>o.oid).join(',')}" data-q="${esc((f.name+' '+f.summary+' '+ov.map(o=>o.args).join(' ')).toLowerCase())}">
         <td><b>${esc(f.name)}</b>${ov.map(o=>`<div class="mono" style="color:var(--muted);font-size:12px;max-width:60ch;white-space:normal">(${esc(o.args)}) &rarr; ${esc(o.result)}</div>`).join('')}</td>
         <td>${sum(f.summary)}</td><td>${ext(f.docs,'Docs')}</td></tr><tr hidden class="fnx"><td colspan="3"></td></tr>`;};
+    const vrow=v=>`<tr class="fnr" tabindex="0" data-rel="${esc(v.name)}" data-q="${esc((v.name+' '+(v.alias||'')+' '+v.summary).toLowerCase())}">
+        <td><b>${esc(v.name)}</b><div style="color:var(--muted);font-size:12px">${esc((rels[v.name]||{}).kind||'not in this database')}${v.alias?` &middot; also <span class="mono">${esc(v.alias)}</span>`:''}</div></td>
+        <td>${sum(v.summary)}</td><td>${ext(v.docs,'Docs')}</td></tr><tr hidden class="fnx"><td colspan="3"></td></tr>`;
+    const views=s=>s.views&&s.views.length?`<div class="fnvb" style="margin:8px 0 0 18px"><div style="font-size:12.5px;color:var(--muted);margin:0 0 4px">Views and tables</div>
+        <div class="tw"><table style="min-width:0"><tbody>${s.views.map(vrow).join('')}</tbody></table></div></div>`:'';
     const groups=doc.groups.map((g,gi)=>`<section class="fng" data-g="${gi}"><h2>${esc(g.name)} <span style="font-size:13px;font-weight:400">${ext(g.docs,'Docs')}</span></h2>
       <p class="lead" style="max-width:none">${esc(g.description)}</p>${g.sections.map(s=>`<div class="fns" style="margin:18px 0">
         <h3>${esc(s.name)}</h3>${s.description?`<p style="color:var(--muted);margin:4px 0 8px">${esc(s.description)}</p>`:'<div style="height:8px"></div>'}
-        <div class="tw"><table style="min-width:0"><thead><tr><th style="width:38%">Function</th><th>What it does</th><th style="width:1%"></th></tr></thead>
-        <tbody>${s.functions.map(row).join('')}</tbody></table></div></div>`).join('')}</section>`).join('');
-    const total=insDocFns(doc).length;
-    return {html:`<div class="toolbar"><input type="search" id="ins-q" placeholder="Search ${total} functions" autocomplete="off" style="min-width:260px">
+        <div class="tw fnt"><table style="min-width:0"><thead><tr><th style="width:38%">Function</th><th>What it does</th><th style="width:1%"></th></tr></thead>
+        <tbody>${s.functions.map(row).join('')}</tbody></table></div>${views(s)}</div>`).join('')}</section>`).join('');
+    const total=insDocFns(doc).length,totalV=insDocViews(doc).length;
+    return {html:`<div class="toolbar"><input type="search" id="ins-q" placeholder="Search ${total} functions and ${totalV} views" autocomplete="off" style="min-width:260px">
       <div class="seg" id="fn-g"><button data-g="" aria-pressed="true">All</button>${doc.groups.map((g,i)=>`<button data-g="${i}" aria-pressed="false">${esc(g.name)}</button>`).join('')}</div>
       <button class="btn alt" id="ins-refresh">Refresh</button></div><p id="fn-more" style="color:var(--muted)"></p>${groups}`,
       after:b=>{
         let g='';
         const draw=()=>{
-          const q=b.querySelector('#ins-q').value.toLowerCase();let n=0;
+          const q=b.querySelector('#ins-q').value.toLowerCase();let n=0,nv=0;
           b.querySelectorAll('section.fng').forEach(sec=>{
-            let secHits=0;
+            let secFn=0,secV=0;
             sec.querySelectorAll('.fns').forEach(box=>{
-              let hits=0;
-              box.querySelectorAll('tr.fnr').forEach(tr=>{const hit=!q||tr.dataset.q.includes(q);tr.hidden=!hit;if(!hit)tr.nextElementSibling.hidden=true;hits+=hit;});
-              box.hidden=!hits;secHits+=hits;
+              let hits=0,vhits=0;
+              box.querySelectorAll('tr.fnr').forEach(tr=>{const hit=!q||tr.dataset.q.includes(q);tr.hidden=!hit;if(!hit)tr.nextElementSibling.hidden=true;
+                if(tr.dataset.rel)vhits+=hit;else hits+=hit;});
+              box.querySelector('.fnt').hidden=!hits;const vb=box.querySelector('.fnvb');if(vb)vb.hidden=!vhits;
+              box.hidden=!(hits+vhits);secFn+=hits;secV+=vhits;
             });
-            sec.hidden=!secHits||(g!==''&&sec.dataset.g!==g);if(!sec.hidden)n+=secHits;
+            sec.hidden=!(secFn+secV)||(g!==''&&sec.dataset.g!==g);
+            if(!sec.hidden){n+=secFn;nv+=secV;}
           });
-          b.querySelector('#fn-more').textContent=n?`${n} function${n===1?'':'s'}`:'No function matches.';
+          b.querySelector('#fn-more').textContent=n+nv?`${n} function${n===1?'':'s'}, ${nv} ${nv===1?'view or table':'views and tables'}`:'Nothing matches.';
         };
         b.querySelector('#ins-q').oninput=draw;
         b.querySelectorAll('#fn-g button').forEach(x=>x.onclick=()=>{g=x.dataset.g;b.querySelectorAll('#fn-g button').forEach(y=>y.setAttribute('aria-pressed',y===x));draw();});
         b.querySelectorAll('tr.fnr').forEach(tr=>{const tog=async e=>{
           if(e.target.closest('a'))return;
           const x=tr.nextElementSibling;x.hidden=!x.hidden;if(x.hidden)return;
-          const td=x.firstElementChild,oids=tr.dataset.oids.split(',').filter(Boolean);
+          const td=x.firstElementChild;
+          if(tr.dataset.rel){insShowColumns(td,tr.dataset.rel,rels[tr.dataset.rel]);return;}
+          const oids=tr.dataset.oids.split(',').filter(Boolean);
           if(!oids.length){td.innerHTML='<span style="color:var(--muted)">Not found in this database.</span>';return;}
           td.innerHTML='<span style="color:var(--muted)">Reading…</span>';
           const parts=await Promise.all(oids.map(async o=>{if(!(o in INS.fn)){try{INS.fn[o]={ok:true,def:await insDefinition(tr.querySelector('b').textContent,o)};}catch(err){INS.fn[o]={ok:false,error:String(err.message||err)};}}return INS.fn[o];}));

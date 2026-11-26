@@ -178,6 +178,18 @@
        "summary": "Probes a registered model to confirm it's functional, running a minimal test inference.",
        "docs": "reference/models/#aidbvalidate_model"
       }
+     ],
+     "views": [
+      {
+       "name": "aidb.models",
+       "summary": "Lists all models in the registry, including default and user-created models.",
+       "docs": "reference/models/#aidbmodels"
+      },
+      {
+       "name": "aidb.model_providers",
+       "summary": "Lists the model providers you can pass to `aidb.create_model()`.",
+       "docs": "reference/models/#aidbmodel_providers"
+      }
      ]
     },
     {
@@ -213,6 +225,13 @@
        "name": "aidb.endpoint_host",
        "summary": "Returns the host a model of the given provider calls for the given URL.",
        "docs": "reference/models/#aidbendpoint_host"
+      }
+     ],
+     "views": [
+      {
+       "name": "aidb.credentials",
+       "summary": "Lists the model credentials.",
+       "docs": "reference/models/#aidbcredentials"
       }
      ]
     },
@@ -349,6 +368,20 @@
        "summary": "Cascades: deletes all pipelines attached to the knowledge base, drops the vector table, and removes the registry entry.",
        "docs": "reference/knowledge-bases/#aidbdelete_knowledge_base"
       }
+     ],
+     "views": [
+      {
+       "name": "aidb.knowledge_bases",
+       "summary": "Lists all knowledge bases in the database with their full configuration.",
+       "docs": "reference/knowledge-bases/#aidbknowledge_bases",
+       "alias": "aidb.kbs"
+      },
+      {
+       "name": "aidb.knowledge_base_metrics",
+       "summary": "Aggregated stats for each knowledge base — pipeline count, embedding row count, and the worst pipeline status.",
+       "docs": "reference/knowledge-bases/#aidbknowledge_base_metrics",
+       "alias": "aidb.kbm"
+      }
      ]
     },
     {
@@ -364,6 +397,13 @@
        "name": "aidb.delete_volume",
        "summary": "Deletes an AIDB volume.",
        "docs": "reference/knowledge-bases/#aidbdelete_volume"
+      }
+     ],
+     "views": [
+      {
+       "name": "aidb.volumes",
+       "summary": "View that lists all AIDB volumes in the database.",
+       "docs": "reference/knowledge-bases/#aidbvolumes"
       }
      ]
     }
@@ -687,6 +727,20 @@
        "summary": "Returns current processing statistics for a pipeline.",
        "docs": "data-pipelines/reference/#aidbget_pipeline_metrics"
       }
+     ],
+     "views": [
+      {
+       "name": "aidb.pipelines",
+       "summary": "Lists all registered pipelines and their configuration, including source, destination, processing mode, and step definitions.",
+       "docs": "data-pipelines/reference/#aidbpipelines",
+       "alias": "aidb.pipes"
+      },
+      {
+       "name": "aidb.pipeline_metrics",
+       "summary": "Shows current processing statistics for each pipeline.",
+       "docs": "data-pipelines/reference/#aidbpipeline_metrics",
+       "alias": "aidb.pipem"
+      }
      ]
     },
     {
@@ -828,6 +882,18 @@
        "summary": "Deletes an agent by name.",
        "docs": "reference/agents/#aidbdelete_agent"
       }
+     ],
+     "views": [
+      {
+       "name": "aidb.agents",
+       "summary": "Agent configuration. There's no dedicated \"list agents\" function — query this table directly.",
+       "docs": "reference/agents/#aidbagents"
+      },
+      {
+       "name": "aidb.agent_tasks",
+       "summary": "One row per `agent_converse` call (a \"task\"), including its lifecycle status.",
+       "docs": "reference/agents/#aidbagent_tasks"
+      }
      ]
     },
     {
@@ -853,6 +919,18 @@
        "name": "aidb.get_message",
        "summary": "Retrieves one message's plain-text contents by id.",
        "docs": "reference/agents/#aidbget_message"
+      }
+     ],
+     "views": [
+      {
+       "name": "aidb.conversations",
+       "summary": "One row per conversation, aggregated from `aidb.conversation_log`.",
+       "docs": "reference/agents/#aidbconversations"
+      },
+      {
+       "name": "aidb.conversation_log",
+       "summary": "Every user prompt and agent answer, across every conversation — the same rows `aidb.get_conversation()` returns, unfiltered by `conversation_id`.",
+       "docs": "reference/agents/#aidbconversation_log"
       }
      ]
     },
@@ -895,6 +973,13 @@
        "name": "aidb.get_mcp_agents",
        "summary": "Lists agents as MCP tool descriptors.",
        "docs": "reference/agents/#aidbget_mcp_agents"
+      }
+     ],
+     "views": [
+      {
+       "name": "aidb.agent_plugins",
+       "summary": "Agent plugins and their content. Read-only: create, change, and delete plugins with the agent plugin functions.",
+       "docs": "reference/agents/#aidbagent_plugins"
       }
      ]
     }
@@ -944,6 +1029,23 @@
        "summary": "Runs any tool in `aidb.tools` by name, whether native, SQL, or MCP, and returns its result.",
        "docs": "reference/tools/#aidbrun_tool"
       }
+     ],
+     "views": [
+      {
+       "name": "aidb.tools",
+       "summary": "The unified, read-only catalog of every tool AIDB knows about — the union of native tools, registered SQL tools, and cached MCP tools.",
+       "docs": "reference/tools/#aidbtools"
+      },
+      {
+       "name": "aidb.sql_tool_registry",
+       "summary": "Backs registered SQL tools. `aidb.tools` is the union view most queries should use instead; query this directly to see a SQL tool's stored query text.",
+       "docs": "reference/tools/#aidbsql_tool_registry"
+      },
+      {
+       "name": "aidb.mcp_registry",
+       "summary": "Registered external MCP servers.",
+       "docs": "reference/tools/#aidbmcp_registry"
+      }
      ]
     },
     {
@@ -988,6 +1090,13 @@
        "summary": "Deletes a purpose.",
        "docs": "reference/agents/#aidbdelete_purpose"
       }
+     ],
+     "views": [
+      {
+       "name": "aidb.purpose_registry",
+       "summary": "Purposes an agent can hold. Each purpose maps a name to the Postgres role that an agent's tool calls run as.",
+       "docs": "reference/agents/#aidbpurpose_registry"
+      }
      ]
     },
     {
@@ -1003,6 +1112,13 @@
        "name": "aidb.backfill_purpose_history",
        "summary": "Adds the missing current-version history row for each purpose restored from a dump taken before AIDB 7.10.0.",
        "docs": "reference/purposes/#aidbbackfill_purpose_history"
+      }
+     ],
+     "views": [
+      {
+       "name": "aidb.purpose_history",
+       "summary": "Lists every version of every purpose.",
+       "docs": "reference/purposes/#aidbpurpose_history"
       }
      ]
     }
@@ -1062,6 +1178,33 @@
        "summary": "Closes a conversation and stores a handoff that describes it.",
        "docs": "reference/agent-memory/#aidb_memorysession_end"
       }
+     ],
+     "views": [
+      {
+       "name": "aidb_memory.namespaces",
+       "summary": "Lists the available agent memory namespaces.",
+       "docs": "reference/agent-memory/#aidb_memorynamespaces"
+      },
+      {
+       "name": "aidb_memory.events",
+       "summary": "Lists the ingestion events created when applications call `aidb_memory.add`.",
+       "docs": "reference/agent-memory/#aidb_memoryevents"
+      },
+      {
+       "name": "aidb_memory.messages",
+       "summary": "Stores the ordered message history generated from memory events, including the actor and session context, role, content, and timestamps.",
+       "docs": "reference/agent-memory/#aidb_memorymessages"
+      },
+      {
+       "name": "aidb_memory.sessions",
+       "summary": "One row per conversation, created lazily by `session_start`, `session_end`, or a compacting `session_get`.",
+       "docs": "reference/agent-memory/#aidb_memorysessions"
+      },
+      {
+       "name": "aidb_memory.session_compactions",
+       "summary": "Summaries that stand in for the turns a session has compacted, ordered per session by `seq`.",
+       "docs": "reference/agent-memory/#aidb_memorysession_compactions"
+      }
      ]
     }
    ]
@@ -1079,6 +1222,28 @@
        "name": "aidb.run_otel_retention_cleanup",
        "summary": "Manually triggers a full retention cleanup pass, deleting rows older than `aidb.otel_cleaner_retention_days` from all three `aidb_otel` tables, in the same bounded batches the cleaner background worker uses.",
        "docs": "reference/observability/#aidbrun_otel_retention_cleanup"
+      }
+     ],
+     "views": [
+      {
+       "name": "aidb_otel.traces",
+       "summary": "One row per span, written when aidb.otel_client = 'database'. Governance decisions are spans named purpose_decision.",
+       "docs": "reference/observability/#schemas"
+      },
+      {
+       "name": "aidb_otel.logs",
+       "summary": "One row per log record.",
+       "docs": "reference/observability/#schemas"
+      },
+      {
+       "name": "aidb_otel.metrics",
+       "summary": "One row per batch of metric readings.",
+       "docs": "reference/observability/#schemas"
+      },
+      {
+       "name": "aidb_otel.cleanup_log",
+       "summary": "Who ran each retention cleanup, what it deleted, and why.",
+       "docs": "reference/observability/#auditing-retention-cleanups"
       }
      ]
     }
