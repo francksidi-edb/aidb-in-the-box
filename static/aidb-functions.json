@@ -9,43 +9,44 @@
    "description": "Use the standalone SQL functions in AIDB for chunking, parsing, OCR, summarization, PII detection, AI inference, and reranking. Call them directly in SQL queries or use them as building blocks in custom AI workflows.",
    "sections": [
     {
-     "name": "Chunking",
-     "docs": "sql-functions/chunk-text/",
-     "description": "Splitting text into segments for LLM context windows",
+     "name": "Encoding and generating",
+     "docs": "sql-functions/encode-decode/",
+     "description": "Embedding text and images into vectors and generating text completions",
      "functions": [
       {
-       "name": "aidb.chunk_text",
-       "summary": "Divides a text string into smaller, semantically coherent segments.",
-       "docs": "reference/functions/#aidbchunk_text"
-      }
-     ]
-    },
-    {
-     "name": "Parsing",
-     "docs": "sql-functions/parse/",
-     "description": "Extracting readable text from HTML and PDF inputs",
-     "functions": [
-      {
-       "name": "aidb.parse_html",
-       "summary": "Extracts readable text from an HTML string, stripping tags while preserving structure.",
-       "docs": "reference/functions/#aidbparse_html"
+       "name": "aidb.encode_text",
+       "summary": "Encodes a single text string into a vector using the specified model.",
+       "docs": "reference/models/#aidbencode_text"
       },
       {
-       "name": "aidb.parse_pdf",
-       "summary": "Extracts text from binary PDF data.",
-       "docs": "reference/functions/#aidbparse_pdf"
-      }
-     ]
-    },
-    {
-     "name": "OCR",
-     "docs": "sql-functions/perform-ocr/",
-     "description": "Extracting text from images using an OCR-capable model",
-     "functions": [
+       "name": "aidb.encode_text_batch",
+       "summary": "Encodes an array of text strings into vectors in a single call.",
+       "docs": "reference/models/#aidbencode_text_batch"
+      },
       {
-       "name": "aidb.perform_ocr",
-       "summary": "Extracts text from image data using a registered OCR-capable model.",
-       "docs": "reference/functions/#aidbperform_ocr"
+       "name": "aidb.encode_text_query",
+       "summary": "Encodes a search query into a vector using the model's query encoding.",
+       "docs": "reference/models/#aidbencode_text_query"
+      },
+      {
+       "name": "aidb.encode_text_query_batch",
+       "summary": "Encodes an array of search queries into vectors in a single call.",
+       "docs": "reference/models/#aidbencode_text_query_batch"
+      },
+      {
+       "name": "aidb.encode_image",
+       "summary": "Encodes a binary image into a vector using a multimodal model (for example, CLIP).",
+       "docs": "reference/models/#aidbencode_image"
+      },
+      {
+       "name": "aidb.generate_text",
+       "summary": "Generates a text response from a prompt using the specified model.",
+       "docs": "reference/models/#aidbgenerate_text"
+      },
+      {
+       "name": "aidb.generate_text_batch",
+       "summary": "Generates text responses for an array of prompts in a single call.",
+       "docs": "reference/models/#aidbgenerate_text_batch"
       }
      ]
     },
@@ -94,48 +95,6 @@
      ]
     },
     {
-     "name": "Encoding and generating",
-     "docs": "sql-functions/encode-decode/",
-     "description": "Embedding text and images into vectors and generating text completions",
-     "functions": [
-      {
-       "name": "aidb.encode_text",
-       "summary": "Encodes a single text string into a vector using the specified model.",
-       "docs": "reference/models/#aidbencode_text"
-      },
-      {
-       "name": "aidb.encode_text_batch",
-       "summary": "Encodes an array of text strings into vectors in a single call.",
-       "docs": "reference/models/#aidbencode_text_batch"
-      },
-      {
-       "name": "aidb.encode_text_query",
-       "summary": "Encodes a search query into a vector using the model's query encoding.",
-       "docs": "reference/models/#aidbencode_text_query"
-      },
-      {
-       "name": "aidb.encode_text_query_batch",
-       "summary": "Encodes an array of search queries into vectors in a single call.",
-       "docs": "reference/models/#aidbencode_text_query_batch"
-      },
-      {
-       "name": "aidb.encode_image",
-       "summary": "Encodes a binary image into a vector using a multimodal model (for example, CLIP).",
-       "docs": "reference/models/#aidbencode_image"
-      },
-      {
-       "name": "aidb.generate_text",
-       "summary": "Generates a text response from a prompt using the specified model.",
-       "docs": "reference/models/#aidbgenerate_text"
-      },
-      {
-       "name": "aidb.generate_text_batch",
-       "summary": "Generates text responses for an array of prompts in a single call.",
-       "docs": "reference/models/#aidbgenerate_text_batch"
-      }
-     ]
-    },
-    {
      "name": "Reranking",
      "docs": "sql-functions/rerank-text/",
      "description": "Scoring and reordering candidate passages by relevance",
@@ -144,6 +103,47 @@
        "name": "aidb.rerank_text",
        "summary": "Scores and ranks a set of text inputs against a query using a reranking model.",
        "docs": "reference/models/#aidbrerank_text"
+      }
+     ]
+    },
+    {
+     "name": "OCR",
+     "docs": "sql-functions/perform-ocr/",
+     "description": "Extracting text from images using an OCR-capable model",
+     "functions": [
+      {
+       "name": "aidb.perform_ocr",
+       "summary": "Extracts text from image data using a registered OCR-capable model.",
+       "docs": "reference/functions/#aidbperform_ocr"
+      }
+     ]
+    },
+    {
+     "name": "Parsing",
+     "docs": "sql-functions/parse/",
+     "description": "Extracting readable text from HTML and PDF inputs",
+     "functions": [
+      {
+       "name": "aidb.parse_html",
+       "summary": "Extracts readable text from an HTML string, stripping tags while preserving structure.",
+       "docs": "reference/functions/#aidbparse_html"
+      },
+      {
+       "name": "aidb.parse_pdf",
+       "summary": "Extracts text from binary PDF data.",
+       "docs": "reference/functions/#aidbparse_pdf"
+      }
+     ]
+    },
+    {
+     "name": "Chunking",
+     "docs": "sql-functions/chunk-text/",
+     "description": "Splitting text into segments for LLM context windows",
+     "functions": [
+      {
+       "name": "aidb.chunk_text",
+       "summary": "Divides a text string into smaller, semantically coherent segments.",
+       "docs": "reference/functions/#aidbchunk_text"
       }
      ]
     }
