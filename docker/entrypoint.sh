@@ -1,7 +1,9 @@
 #!/bin/bash
 set -e
 
-# First start only: create the cluster and the database, then run bootstrap.sql.
+BOOTSTRAP_TODO="$PGDATA/aibox-bootstrap.todo"
+
+# First start only: create the cluster.
 if [ ! -f "$PGDATA/PG_VERSION" ]; then
   echo "${POSTGRES_PASSWORD:-postgres}" > /tmp/pwfile
   initdb -D "$PGDATA" -E UTF8 --locale=C.UTF-8 --auth-local=trust --auth-host=scram-sha-256 --pwfile=/tmp/pwfile
@@ -11,12 +13,18 @@ if [ ! -f "$PGDATA/PG_VERSION" ]; then
   echo "shared_preload_libraries = 'aidb,pg_tokenizer'" >> "$PGDATA/postgresql.conf"
   echo "aidb.otel_client = 'database'"       >> "$PGDATA/postgresql.conf"   # governance notebooks: decisions land in aidb_otel.traces
   echo "host all all 0.0.0.0/0 scram-sha-256" >> "$PGDATA/pg_hba.conf"
+  touch "$BOOTSTRAP_TODO"
+fi
 
+# Create the database and run bootstrap.sql until that has succeeded once. The marker is removed only at the end, so
+# a first start that fails halfway is retried on the next start; volumes set up before the marker existed are skipped.
+if [ -f "$BOOTSTRAP_TODO" ]; then
   pg_ctl -D "$PGDATA" -w start
-  psql -d postgres -c "CREATE DATABASE aidb;"
+  psql -d postgres -qAt -c "SELECT 1 FROM pg_database WHERE datname = 'aidb'" | grep -q 1 || psql -d postgres -c "CREATE DATABASE aidb;"
   # Extensions, demo roles, sample data and the AIDB egress allowlist (all in bootstrap.sql).
-  psql -d aidb -v ON_ERROR_STOP=1 -q -f /bootstrap.sql
+  psql -d aidb -v ON_ERROR_STOP=1 -q -f /bootstrap.sql || { pg_ctl -D "$PGDATA" -m fast stop; exit 1; }
   pg_ctl -D "$PGDATA" -w stop
+  rm -f "$BOOTSTRAP_TODO"
 fi
 
 # Start Postgres in the background so a restart from a notebook doesn't stop the container.

@@ -52,6 +52,8 @@ On the **first start** (an empty data volume), `entrypoint.sh`:
 2. Creates the database `aidb`.
 3. Runs `bootstrap.sql`: the extensions (`aidb`, `pgfs`, `vector`, `pg_tokenizer`, `vchord_bm25`), the roles `demo_user` and `demo_governor` (password `demo`), the sample "Orbit Cloud support desk" tables some notebooks use, and the AIDB egress allowlist (it adds `api.anthropic.com` and the Hugging Face hosts to the existing list and never replaces it).
 
+Steps 2 and 3 count as done only when `bootstrap.sql` finishes (until then `aibox-bootstrap.todo` is in the data directory). If the first start fails partway, fix the cause and start again: the next start repeats them.
+
 On **every start** it updates the extensions, starts Jupyter Notebook (port 8888, with a new token on every start unless you set `JUPYTER_TOKEN` in `docker/.env`) from `/var/lib/pgsql`, and starts the AI in the Box app (port 8650), connected to `aidb` as `postgres`. The apps are part of that same app and use the same connection, so they need no extra ports or processes.
 
 The image also includes:
