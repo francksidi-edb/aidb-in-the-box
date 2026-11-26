@@ -145,7 +145,7 @@ def status():
         out["error"] = rows
         return jsonify(out)
     out["server"] = rows[0][0] if rows else ""
-    wanted = ("aidb", "vector", "edb_vectorplus", "pgfs", "pg_textsearch", "pgaa", "age")
+    wanted = ("aidb", "vector", "pgfs", "vchord_bm25", "pg_tokenizer")   # the extensions docker/bootstrap.sql creates
     ok, rows = psql("select extname, extversion from pg_extension where extname in (%s)"
                     % ",".join("'%s'" % w for w in wanted))
     installed = {r[0]: r[1] for r in rows} if ok else {}
