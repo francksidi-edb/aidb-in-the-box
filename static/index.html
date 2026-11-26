@@ -341,7 +341,7 @@ function navHtml(v){
 /* The demo apps (pages in apps.js and tokenboss.js, APIs in webapps/): key, label, icon, description */
 const APPS=[['converse','EDB Agent Converse','bot','Chat with EDB Postgres AI agents created with aidb.create_agent(). Pick an agent, ask a question, and keep the conversation going.'],
  ['validation','Customs Document Validation','check','Upload customs PDFs for Mexico-to-US auto parts shipments, validate them against the rules, and ask an agent what to fix before filing.'],
- ['tokenboss','Token Boss','coin','Find AIDB agents that waste tokens, get recommendations, apply them, and undo them if they do not help. Token counts are estimates (characters ÷ 4).']];
+ ['tokenboss','Token Boss','coin','Find AIDB agents that waste tokens, get recommendations, apply them, and undo them if they do not help. Token counts are the ones the model provider reported (from AIDB telemetry), or estimates (characters ÷ 4) where it reported none.']];
 const NAV=()=>{
  const grp=(h,i,g)=>({h,i,to:g,items:D.map((d,k)=>[d,k]).filter(([d])=>d.g===g).map(([d,k])=>['read-'+k,d.n,'','book'])});
  return [{h:'Home',i:'home',to:'overview'},

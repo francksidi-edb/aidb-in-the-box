@@ -12,7 +12,7 @@ AU.msg=(kind,html)=>`<div class="msg ${kind}">${html}</div>`;
 AU.err=t=>AU.msg('err',esc(t));
 AU.working=t=>`<div class="working"><div class="ring"></div><div class="wtext"><b>${esc(t)}</b><div class="track"><div class="bar"></div></div></div></div>`;
 AU.pretty=k=>({n:'Count',slowest_s:'Slowest (Seconds)',history_id:'Id',avg_cost:'Avg Cost Per Task',model_id:'Model',
-  est_tokens_per_task:'Est Tokens Per Task'}[k]||String(k).replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()));
+  tokens_per_task:'Input Tokens Per Task'}[k]||String(k).replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()));
 AU.cell=v=>v==null||v===''?'<span style="color:var(--muted)">&ndash;</span>':esc(typeof v==='object'?JSON.stringify(v):v);
 AU.ok=v=>`<span class="pill ${v?'p-ok':'p-mute'}">${v?'✓':'○'}</span>`;
 AU.session=(k,v)=>{try{if(v===undefined)return JSON.parse(sessionStorage.getItem(k)||'null');sessionStorage.setItem(k,JSON.stringify(v));}catch(e){return null;}};
