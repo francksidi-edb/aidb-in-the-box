@@ -54,8 +54,16 @@ cd /var/lib/pgsql/app
 python3 box_server.py > /var/lib/pgsql/aibox.log 2>&1 &
 APP_PID=$!
 
-# On docker stop, shut Postgres down cleanly.
-trap 'pg_ctl -D "$PGDATA" -m fast stop || true; kill $APP_PID $JUPYTER_PID 2>/dev/null || true' TERM INT
+# Shut Postgres down cleanly on docker stop, and also when the app exits (otherwise Docker kills it).
+stop_all() {
+  kill $APP_PID $JUPYTER_PID 2>/dev/null || true
+  pg_ctl -D "$PGDATA" -m fast stop || true
+}
+trap 'stop_all; exit 0' TERM INT
 
 # The container lives as long as the app does.
-wait $APP_PID
+status=0
+wait $APP_PID || status=$?
+echo "AI in the Box exited (status $status), stopping. See /var/lib/pgsql/aibox.log."
+stop_all
+exit $status
