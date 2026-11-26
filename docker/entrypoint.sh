@@ -43,10 +43,49 @@ done
 # The demo roles, also on volumes created before a role was added (roles.sql can run again).
 PGOPTIONS="-c client_min_messages=warning" psql -d aidb -v ON_ERROR_STOP=1 -q -f /roles.sql || echo "WARN: roles.sql failed"
 
-# Jupyter in the background, started in the postgres home directory where the notebooks are. Jupyter reads its token
-# from JUPYTER_TOKEN (a new one on every start unless set in .env); the app passes it to its "Open in Jupyter" links.
+# The notebooks live on their own volume, so edits made in Jupyter survive a new container. Copy in the image's version
+# of each file that is new, or that nobody edited since it was last copied (its checksum is the one recorded then);
+# edited files are kept. The record is NOTEBOOKS/.image-checksums (checksum, tab, file name).
+# A notebook's checksum covers its cells' sources only: running it saves outputs, which is not an edit.
+content_sum() {
+  case "$1" in
+    *.ipynb) python3 -c 'import hashlib, json, sys
+cells = json.load(open(sys.argv[1]))["cells"]
+print(hashlib.sha256(json.dumps([[c["cell_type"], "".join(c["source"])] for c in cells]).encode()).hexdigest())' "$1" \
+               2>/dev/null || echo unreadable ;;
+    *) sha256sum < "$1" | cut -d' ' -f1 ;;
+  esac
+}
+sync_notebooks() {
+  local src=/var/lib/pgsql/app/notebooks dst=/var/lib/pgsql/notebooks
+  local record="$dst/.image-checksums" next
+  next="$(mktemp)"
+  touch "$record"
+  for f in "$src"/*; do
+    [ -f "$f" ] || continue
+    local name image copied current
+    name="$(basename "$f")"
+    image="$(content_sum "$f")"
+    copied="$(awk -F'\t' -v n="$name" '$2 == n {print $1}' "$record")"
+    current=""
+    if [ -e "$dst/$name" ]; then current="$(content_sum "$dst/$name")"; fi
+    if [ -z "$current" ] || { [ "$current" = "$copied" ] && [ "$current" != "$image" ]; }; then
+      cp "$f" "$dst/$name"
+      current="$image"
+    elif [ "$current" != "$image" ] && [ "$current" != "$copied" ]; then
+      echo "Keeping your edited $name (the image has another version: $f)"
+    fi
+    # what is in the folder now counts as not edited if it is the image's version
+    printf '%s\t%s\n' "$( [ "$current" = "$image" ] && echo "$image" || echo "$copied" )" "$name" >> "$next"
+  done
+  mv "$next" "$record"
+}
+sync_notebooks
+
+# Jupyter in the background, started in the notebooks folder. Jupyter reads its token from JUPYTER_TOKEN (a new one on
+# every start unless set in .env); the app passes it to its "Open in Jupyter" links.
 export JUPYTER_TOKEN="${JUPYTER_TOKEN:-$(python3 -c 'import secrets; print(secrets.token_urlsafe(24))')}"
-cd /var/lib/pgsql
+cd /var/lib/pgsql/notebooks
 ~/jupyter_env/bin/jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser > ~/jupyter.log 2>&1 &
 JUPYTER_PID=$!
 

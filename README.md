@@ -44,7 +44,7 @@ See [`docker/README.md`](docker/README.md) for how the container works and for t
 
 This repo is a framework you can drop notebooks and apps into.
 
-- **Notebooks** are in `notebooks/`, grouped in the menu by `static/data.json` (Agents, Cost Optimization, Governance). Open **Jupyter Notebooks** under **Run it** to run them. They are copied to Jupyter's home folder, `/var/lib/pgsql` in the container. Edits you make in Jupyter live in the container and are not saved back to this repo.
+- **Notebooks** are in `notebooks/`, grouped in the menu by `static/data.json` (Agents, Cost Optimization, Governance). Open **Jupyter Notebooks** under **Run it** to run them. On every start they are copied into Jupyter's folder, the `notebooks` volume (`/var/lib/pgsql/notebooks` in the container), except the ones you edited there. Your edits are kept when the container is replaced, but not saved back to this repo (see `docker/README.md`).
 - **Apps** are pages in the web app. Each has a backend in `webapps/` and a page in `static/`.
 - **Sample data and roles** the notebooks and apps rely on are created on first start (`docker/bootstrap.sql`, roles in `docker/roles.sql`). The apps connect as `demo_user`, Token Boss as `demo_monitor`, not as the superuser. Sample PDFs are in `pgfs/`, copied to `/tmp/pgfs/` in the container.
 

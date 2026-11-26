@@ -17,7 +17,7 @@ One container (Rocky Linux 9) that runs EDB Postgres 18 with AIDB, PGFS and Vect
 | Script | What it does |
 | :-- | :-- |
 | `./start.sh` | Builds the image if needed (`docker compose build`), starts the container, waits until the app answers and reaches the database (the healthcheck in `docker-compose.yml`), and opens the app. It asks for the token (unless `EDB_TOKEN` is set) only when the image does not exist yet, or when a build without it fails because the EDB packages have to be downloaded again. |
-| `./stop.sh` | `docker compose down`: removes the container and keeps the database and document volumes. Run `./start.sh` to bring it back. |
+| `./stop.sh` | `docker compose down`: removes the container and keeps the database, document and notebook volumes. Run `./start.sh` to bring it back. |
 | `./rebuild.sh` | `docker compose down --volumes`, then a build with no cache and a fresh start. **Deletes the database.** |
 
 The token is passed as a BuildKit secret and is not stored in the image. It is only needed when building.
@@ -54,11 +54,11 @@ On the **first start** (an empty data volume), `entrypoint.sh`:
 
 Steps 2 and 3 count as done only when `bootstrap.sql` finishes (until then `aibox-bootstrap.todo` is in the data directory). If the first start fails partway, fix the cause and start again: the next start repeats them.
 
-On **every start** it updates the extensions, runs `roles.sql` again (so a volume created before a role was added gets it), starts Jupyter Notebook (port 8888, with a new token on every start unless you set `JUPYTER_TOKEN` in `docker/.env`) from `/var/lib/pgsql`, and starts the AI in the Box app (port 8650). The apps are part of that same app, so they need no extra ports or processes.
+On **every start** it updates the extensions, runs `roles.sql` again (so a volume created before a role was added gets it), updates the notebooks in the `notebooks` volume (see [Data](#data)), starts Jupyter Notebook (port 8888, with a new token on every start unless you set `JUPYTER_TOKEN` in `docker/.env`) from that folder, and starts the AI in the Box app (port 8650). The apps are part of that same app, so they need no extra ports or processes.
 
 The image also includes:
 
-- the notebooks, copied to `/var/lib/pgsql` (where Jupyter starts);
+- the notebooks, in `/var/lib/pgsql/app/notebooks`. On every start the entrypoint copies them into the `notebooks` volume (`/var/lib/pgsql/notebooks`, where Jupyter starts), see [Data](#data);
 - the sample documents, copied to `/tmp/pgfs/` (the `pgfs` volume);
 - the app in `/var/lib/pgsql/app`: `box_server.py`, the `webapps/` backends for the apps, `static/` and the Introspector.
 - the Python packages for the app and Jupyter, at the versions in `requirements.txt` (and their dependencies at the versions in `constraints.txt`), so a rebuild does not pick up new releases by surprise.
@@ -78,9 +78,19 @@ AIDB lets only the owner role of an agent, pipeline or tool change or delete it.
 
 ## Data
 
-The database lives in the Docker volume `pgdata` (`/var/lib/pgsql/18/data`), and the documents pgfs reads (the sample PDFs, the PDFs you upload in Customs Document Validation and the PDFs the RAG notebook downloads) in the volume `pgfs` (`/tmp/pgfs`). Files outside these two folders, such as the MCP notebook's `/var/lib/pgsql/pgfs`, are lost when the container is removed. `./stop.sh` and `docker compose stop` keep both. `./rebuild.sh` and `docker compose down -v` delete both. The `pgfs` volume is filled with the image's sample documents when it is created, so sample documents added to the repo later appear only after `./rebuild.sh`. Because the first-start setup only runs on an empty volume, changes to `entrypoint.sh` or `bootstrap.sql` need `./rebuild.sh` to take effect.
+Three Docker volumes keep the data when the container is replaced:
 
-After you change a notebook, the app or the Dockerfile in the repo, run `./start.sh` (or `docker compose up -d --build`) to refresh the image. Edits you make inside Jupyter are not saved back to the repo.
+| Volume | Folder | What |
+| :-- | :-- | :-- |
+| `pgdata` | `/var/lib/pgsql/18/data` | the database (and the MCP notebook's TLS certificate) |
+| `pgfs` | `/tmp/pgfs` | the documents pgfs reads: the sample PDFs, the PDFs you upload in Customs Document Validation, and the PDFs the RAG and MCP notebooks download |
+| `notebooks` | `/var/lib/pgsql/notebooks` | the notebooks Jupyter opens, with your edits |
+
+Other files in the container are lost when it is removed. `./stop.sh` and `docker compose stop` keep the volumes. `./rebuild.sh` and `docker compose down -v` delete them.
+
+On every start, the entrypoint copies the image's notebooks into the `notebooks` volume: new ones, and those you have not edited since they were last copied (it keeps their checksums in `.image-checksums`). Only a change to a cell counts as an edit, not running it: the saved outputs of an unedited notebook are replaced when it is updated. Notebooks you edited are kept, and the container log says when the image has another version of one; to get it, delete or rename your copy and restart. A notebook you delete comes back on the next start. The `pgfs` volume is filled with the image's sample documents when it is created, so sample documents added to the repo later appear only after `./rebuild.sh`. Because the first-start setup only runs on an empty volume, changes to `entrypoint.sh` or `bootstrap.sql` need `./rebuild.sh` to take effect.
+
+After you change a notebook, the app or the Dockerfile in the repo, run `./start.sh` (or `docker compose up -d --build`) to refresh the image. Edits you make inside Jupyter stay in the `notebooks` volume and are not saved back to the repo.
 
 ## Troubleshooting
 
