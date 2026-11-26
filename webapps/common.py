@@ -108,15 +108,22 @@ class Job:
 
 
 JOBS = {}
+RUNNING = {}   # key -> the job started with that key
 _lock = threading.Lock()
 
 
-def start_job(fn, *args):
-    job = Job()
+def start_job(fn, *args, key=None):
+    """Run fn(job, *args) in a thread. With a key, only one such job runs at a time: while it runs, starting
+    another returns the running job instead (for example a second browser tab pressing the same button)."""
     with _lock:
+        if key and key in RUNNING and not RUNNING[key].done:
+            return RUNNING[key]
+        job = Job()
         for k in [k for k, j in JOBS.items() if j.done and time.time() - j.t1 > 3600]:
             del JOBS[k]
         JOBS[job.id] = job
+        if key:
+            RUNNING[key] = job
 
     def run():
         try:

@@ -27,7 +27,7 @@ docker compose up -d --build
 
 echo ""
 echo "AI in the Box: http://localhost:8650"
-echo "Jupyter:       http://localhost:8888"
+echo "Jupyter:       open it from Run it in the app (it needs the token the app adds)"
 
 sleep 3
 open http://localhost:8650 || xdg-open http://localhost:8650 || true

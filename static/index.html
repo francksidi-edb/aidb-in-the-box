@@ -264,7 +264,7 @@ function demos(g){
       <div><h4>AIDB features used</h4><ul>${d.how.map(h=>`<li>${esc(h)}</li>`).join('')}</ul></div>
       <div><h4>Questions to try</h4>${d.q.map(q=>`<div class="q">${esc(q)}</div>`).join('')}
         <p style="margin:12px 0 8px;color:var(--muted);font-size:13px">File: <code>${esc(d.f)}</code></p>
-        <a class="btn" href="#read-${i}">Read notebook</a> <a class="btn alt" href="/notebooks/${encodeURIComponent(d.f)}">Download .ipynb</a> <a class="btn alt" href="http://${location.hostname}:8888/notebooks/${encodeURIComponent(d.f)}" target="_blank" rel="noopener">Open in Jupyter</a></div>
+        <a class="btn" href="#read-${i}">Read notebook</a> <a class="btn alt" href="/notebooks/${encodeURIComponent(d.f)}">Download .ipynb</a> <a class="btn alt" href="${jupyterUrl('notebooks/'+encodeURIComponent(d.f))}" target="_blank" rel="noopener">Open in Jupyter</a></div>
     </div></section>`).join('')}</div>`;
 }
 const agents=()=>demos('agents'), cost=()=>demos('cost'), governance=()=>demos('governance');
@@ -292,7 +292,7 @@ function reader(){
   }).catch(()=>{$('#nbbody').innerHTML='<div class="empty">Could not load the notebook.</div>'});
   return `<p><a href="#${d.g}">&larr; ${GROUPS[d.g][0]}</a></p><h1>${esc(d.n)}</h1>
   <p class="lead">${esc(d.blurb)} <span class="tag">${esc(d.f)}</span></p>
-  <p><a class="btn alt" href="/notebooks/${encodeURIComponent(d.f)}">Download .ipynb</a> <a class="btn alt" href="http://${location.hostname}:8888/notebooks/${encodeURIComponent(d.f)}" target="_blank" rel="noopener">Open in Jupyter</a></p>
+  <p><a class="btn alt" href="/notebooks/${encodeURIComponent(d.f)}">Download .ipynb</a> <a class="btn alt" href="${jupyterUrl('notebooks/'+encodeURIComponent(d.f))}" target="_blank" rel="noopener">Open in Jupyter</a></p>
   <div id="nbbody" class="panel pad">Loading…</div>`;
 }
 function status(){
@@ -306,7 +306,8 @@ function statusHtml(s){
   let h='<div class="ck">'+row(s.psql,'psql client',s.psql?'Found on PATH.':'The psql client is missing from the container image.')
    +row(s.connected,'Database connection',s.connected?esc(s.server):esc(s.error||'')+'<br>The container connects with host '+esc(c.PGHOST)+', port '+esc(c.PGPORT)+', database '+esc(c.PGDATABASE)+', user '+esc(c.PGUSER)+'. Check the container log: <code>docker compose logs pg</code>.');
   if(s.connected){
-    h+=(s.extensions||[]).map(e=>row(!!e.installed,e.name,e.installed?'Installed, version '+esc(e.installed):(e.available?'Available. Run <code>CREATE EXTENSION '+esc(e.name)+(e.name==='aidb'||e.name==='edb_vectorplus'?' CASCADE':'')+';</code>':'Not included in this image.'))).join('');
+    h+=(s.extensions||[]).map(e=>row(!!e.installed,e.name,e.installed?'Installed, version '+esc(e.installed):(e.available?'Available. Run <code>CREATE EXTENSION '+esc(e.name)+(e.name==='aidb'?' CASCADE':'')+';</code>':'Not included in this image.'))).join('');
+    h+=row(s.demo_data,'Sample data',s.demo_data?'The Orbit Cloud support desk tables (schema <code>support</code>) are loaded.':'Schema <code>support</code> is missing. It is created by <code>docker/bootstrap.sql</code> on the first start.');
     if(s.aidb_counts) h+=row(true,'AIDB objects',s.aidb_counts.models+' models, '+s.aidb_counts.agents+' agents registered.');
   }
   h+=row(true,'Inspect pages','Built in: open Inspect in the menu.');
@@ -344,7 +345,7 @@ const APPS=[['converse','EDB Agent Converse','bot','Chat with EDB Postgres AI ag
 const NAV=()=>{
  const grp=(h,i,g)=>({h,i,to:g,items:D.map((d,k)=>[d,k]).filter(([d])=>d.g===g).map(([d,k])=>['read-'+k,d.n,'','book'])});
  return [{h:'Home',i:'home',to:'overview'},
- {h:'Run it',i:'play',items:[['jupyter','Jupyter Notebooks','','book','http://'+location.hostname+':8888']]},
+ {h:'Run it',i:'play',items:[['jupyter','Jupyter Notebooks','','book',jupyterUrl('')]]},
  {h:'Apps',i:'cpu',items:APPS.map(([k,l,ico])=>['app-'+k,l,'',ico])},
  grp('Agents','compass','agents'),grp('Cost Optimization','coin','cost'),grp('Governance','shield','governance'),
  {h:'Inspect',i:'search',to:'inspect',items:[['inspect','Database overview','','home'],['inspect-models','Models','','cpu'],['inspect-agents','Agents and tools','','bot'],['inspect-kbs','Knowledge bases','','db'],['inspect-pipelines','Pipelines and storage','','flow'],['inspect-functions','Functions','','book'],['inspect-sql','SQL console','','term']]}];
@@ -363,5 +364,9 @@ function wire(){
   V.querySelectorAll('[data-demo]').forEach(b=>b.onclick=()=>{const s=b.parentElement;const o=s.classList.toggle('open');b.setAttribute('aria-expanded',o);});
 }
 window.addEventListener('hashchange',render);
-fetch('/static/data.json').then(r=>r.json()).then(j=>{({D}=j);render();connPill();}).catch(()=>{$('#view').innerHTML='<div class="empty">Could not load data.json.</div>'});
+/* Jupyter needs the token docker/entrypoint.sh gave it (empty when Jupyter runs without one). */
+let JTOKEN='';
+const jupyterUrl=p=>'http://'+location.hostname+':8888/'+p+(JTOKEN?'?token='+encodeURIComponent(JTOKEN):'');
+const jtoken=fetch('/api/jupyter').then(r=>r.json()).then(j=>{JTOKEN=j.token||'';}).catch(()=>{});
+Promise.all([fetch('/static/data.json').then(r=>r.json()),jtoken]).then(([j])=>{({D}=j);render();connPill();}).catch(()=>{$('#view').innerHTML='<div class="empty">Could not load data.json.</div>'});
 </script>

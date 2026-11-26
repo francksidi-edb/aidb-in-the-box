@@ -192,7 +192,7 @@
    "f": "AIDB MCP - Claude Desktop Integration.ipynb",
    "ids": [],
    "blurb": "Expose an AIDB tool to Claude Desktop over the MCP endpoint, run as a restricted database role.",
-   "data": "The IRS PDFs knowledge base from the RAG demo, with tool search_tax_docs",
+   "data": "The IRS PDFs from the RAG demo, in its own knowledge base with tool mcp_search_tax_docs",
    "net": "Downloads PDFs from irs.gov; port 8765 must be reachable",
    "key": false,
    "restart": true,
@@ -205,7 +205,7 @@
     "Detects AWS public host or falls back to localhost"
    ],
    "q": [
-    "Use the search_tax_docs tool to find the 2025 standard deduction, and tell me the source files."
+    "Use the mcp_search_tax_docs tool to find the 2025 standard deduction, and tell me the source files."
    ],
    "learn": "Claude can only reach what the role is granted. Same setup runs on Docker or AWS. Needs Claude Desktop on a Mac.",
    "g": "agents"

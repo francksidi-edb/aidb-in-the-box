@@ -17,7 +17,7 @@ One container (Rocky Linux 9) that runs EDB Postgres 18 with AIDB, PGFS and Vect
 | Script | What it does |
 | :-- | :-- |
 | `./start.sh` | Asks for the token if `EDB_TOKEN` is not set, builds the image if needed (`docker compose up -d --build`), starts the container and opens the app. |
-| `./stop.sh` | `docker compose down`: removes the container and keeps the database volume. Run `./start.sh` to bring it back. |
+| `./stop.sh` | `docker compose down`: removes the container and keeps the database and document volumes. Run `./start.sh` to bring it back. |
 | `./rebuild.sh` | `docker compose down --volumes`, then a build with no cache and a fresh start. **Deletes the database.** |
 
 The token is passed as a BuildKit secret and is not stored in the image. It is only needed when building.
@@ -29,7 +29,7 @@ The build uploads the repo root to Docker (`context: ..` in `docker-compose.yml`
 | What | How |
 | :-- | :-- |
 | AI in the Box (Flask app) | http://localhost:8650 |
-| Jupyter Notebook | http://localhost:8888 |
+| Jupyter Notebook | under **Run it** in the app (http://localhost:8888; the app adds the token to its links) |
 | MCP endpoint (used by the MCP notebook) | `localhost:8765` |
 | psql from your laptop | `psql -h localhost -U postgres -d aidb` |
 | psql inside the container | `docker compose exec pg psql -d aidb` |
@@ -52,17 +52,19 @@ On the **first start** (an empty data volume), `entrypoint.sh`:
 2. Creates the database `aidb`.
 3. Runs `bootstrap.sql`: the extensions (`aidb`, `pgfs`, `vector`, `pg_tokenizer`, `vchord_bm25`), the roles `demo_user` and `demo_governor` (password `demo`), the sample "Orbit Cloud support desk" tables some notebooks use, and the AIDB egress allowlist (it adds `api.anthropic.com` and the Hugging Face hosts to the existing list and never replaces it).
 
-On **every start** it updates the extensions, starts Jupyter Notebook (port 8888, no token) from `/var/lib/pgsql`, and starts the AI in the Box app (port 8650), connected to `aidb` as `postgres`. The apps are part of that same app and use the same connection, so they need no extra ports or processes.
+Steps 2 and 3 count as done only when `bootstrap.sql` finishes (until then `aibox-bootstrap.todo` is in the data directory). If the first start fails partway, fix the cause and start again: the next start repeats them.
+
+On **every start** it updates the extensions, starts Jupyter Notebook (port 8888, with a new token on every start unless you set `JUPYTER_TOKEN` in `docker/.env`) from `/var/lib/pgsql`, and starts the AI in the Box app (port 8650), connected to `aidb` as `postgres`. The apps are part of that same app and use the same connection, so they need no extra ports or processes.
 
 The image also includes:
 
 - the notebooks, copied to `/var/lib/pgsql` (where Jupyter starts);
-- the sample documents, copied to `/tmp/pgfs/`;
+- the sample documents, copied to `/tmp/pgfs/` (the `pgfs` volume);
 - the app in `/var/lib/pgsql/app`: `box_server.py`, the `webapps/` backends for the apps, `static/` and the Introspector.
 
 ## Data
 
-The database lives in the Docker volume `pgdata` (`/var/lib/pgsql/18/data`). `./stop.sh` and `docker compose stop` keep it. `./rebuild.sh` and `docker compose down -v` delete it. Because the first-start setup only runs on an empty volume, changes to `entrypoint.sh` or `bootstrap.sql` need `./rebuild.sh` to take effect.
+The database lives in the Docker volume `pgdata` (`/var/lib/pgsql/18/data`), and the documents pgfs reads (the sample PDFs, the PDFs you upload in Customs Document Validation and the PDFs the RAG notebook downloads) in the volume `pgfs` (`/tmp/pgfs`). Files outside these two folders, such as the MCP notebook's `/var/lib/pgsql/pgfs`, are lost when the container is removed. `./stop.sh` and `docker compose stop` keep both. `./rebuild.sh` and `docker compose down -v` delete both. The `pgfs` volume is filled with the image's sample documents when it is created, so sample documents added to the repo later appear only after `./rebuild.sh`. Because the first-start setup only runs on an empty volume, changes to `entrypoint.sh` or `bootstrap.sql` need `./rebuild.sh` to take effect.
 
 After you change a notebook, the app or the Dockerfile in the repo, run `./start.sh` (or `docker compose up -d --build`) to refresh the image. Edits you make inside Jupyter are not saved back to the repo.
 
@@ -74,5 +76,6 @@ After you change a notebook, the app or the Dockerfile in the repo, run `./start
 | Build fails with 401 or 403 | The token is wrong or expired. Get a new Repos 2.0 token. |
 | The pill says "Database not connected" | The first start can take a minute or two. Check `docker compose logs pg`. |
 | Port 5432, 8650 or 8888 already in use | Stop the other program, or change the left side of the port in `docker-compose.yml`. |
+| The app answers `Forbidden host.` | It only serves `localhost` and `127.0.0.1`, so a web page that rebinds its DNS name cannot reach it. To open it under another name (a tunnel or an SSH port forward), set `AIBOX_ALLOWED_HOSTS=name1,name2` in `docker/.env`. |
 | An app says it cannot reach the database | Check `docker compose exec pg cat /var/lib/pgsql/aibox.log`. |
 | Agent calls fail with an `egress` error | The host is not on AIDB's egress allowlist. Add it with `ALTER SYSTEM SET aidb.egress_allowlist = '...'` and `SELECT pg_reload_conf();`. |

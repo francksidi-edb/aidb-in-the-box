@@ -55,10 +55,6 @@ def monitor_state():
 
 
 # ---------------------------------------------------------------- setup helpers
-def script(statements):
-    return "\n\n".join(s.strip().rstrip(";") + ";" for s in statements)
-
-
 def run_statements(statements):
     for s in statements:
         execute(s)

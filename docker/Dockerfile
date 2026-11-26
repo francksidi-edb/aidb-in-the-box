@@ -29,7 +29,7 @@ WORKDIR /var/lib/pgsql
 # Python environment: the AI in the Box Flask app (with the demo apps) and Jupyter Notebook.
 RUN python3.12 -m venv ~/jupyter_env && \
     ~/jupyter_env/bin/pip install --no-cache-dir --upgrade pip && \
-    ~/jupyter_env/bin/pip install --no-cache-dir flask notebook pandas psycopg2-binary \
+    ~/jupyter_env/bin/pip install --no-cache-dir flask waitress notebook pandas psycopg2-binary \
         matplotlib pypmml geopandas sqlalchemy seaborn jupysql psycopg \
         datasets ipywidgets
 
