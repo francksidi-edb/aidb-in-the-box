@@ -138,6 +138,13 @@ def jupyter():
     return jsonify({"token": os.environ.get("JUPYTER_TOKEN", "")})
 
 
+@app.get("/api/health")
+def health():
+    """For the container healthcheck: 200 once the app answers and reaches the database, else 503."""
+    ok, _ = psql("select 1", timeout=5)
+    return jsonify({"ok": ok}), (200 if ok else 503)
+
+
 @app.get("/api/status")
 def status():
     conn = {k: os.environ.get(k, "") or ("(socket)" if k == "PGHOST" else "")

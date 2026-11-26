@@ -40,9 +40,23 @@ if ! docker compose build; then
 fi
 docker compose up -d
 
+# Wait for the healthcheck in docker-compose.yml: the app answers and reaches the database.
+echo "Waiting for AI in the Box to start (the first start takes a few minutes)..."
+container="$(docker compose ps -q pg)"
+for _ in $(seq 1 180); do   # 15 minutes
+	case "$(docker inspect -f '{{.State.Status}} {{.State.Health.Status}}' "$container")" in
+		"running healthy") break ;;
+		running*) sleep 5 ;;
+		*) echo "The container stopped. See: docker compose logs pg" >&2; exit 1 ;;
+	esac
+done
+if [ "$(docker inspect -f '{{.State.Health.Status}}' "$container")" != healthy ]; then
+	echo "AI in the Box did not start within 15 minutes. See: docker compose logs pg" >&2
+	exit 1
+fi
+
 echo ""
 echo "AI in the Box: http://localhost:8650"
 echo "Jupyter:       open it from Run it in the app (it needs the token the app adds)"
 
-sleep 3
 open http://localhost:8650 || xdg-open http://localhost:8650 || true

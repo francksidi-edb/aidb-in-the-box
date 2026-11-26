@@ -16,7 +16,7 @@ One container (Rocky Linux 9) that runs EDB Postgres 18 with AIDB, PGFS and Vect
 
 | Script | What it does |
 | :-- | :-- |
-| `./start.sh` | Builds the image if needed (`docker compose build`), starts the container and opens the app. It asks for the token (unless `EDB_TOKEN` is set) only when the image does not exist yet, or when a build without it fails because the EDB packages have to be downloaded again. |
+| `./start.sh` | Builds the image if needed (`docker compose build`), starts the container, waits until the app answers and reaches the database (the healthcheck in `docker-compose.yml`), and opens the app. It asks for the token (unless `EDB_TOKEN` is set) only when the image does not exist yet, or when a build without it fails because the EDB packages have to be downloaded again. |
 | `./stop.sh` | `docker compose down`: removes the container and keeps the database and document volumes. Run `./start.sh` to bring it back. |
 | `./rebuild.sh` | `docker compose down --volumes`, then a build with no cache and a fresh start. **Deletes the database.** |
 
