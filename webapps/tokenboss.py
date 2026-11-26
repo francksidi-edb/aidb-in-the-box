@@ -263,7 +263,9 @@ def apply():
     b = request.get_json()
     if MODIFIER_NAME not in names_present("SELECT name FROM aidb.agents WHERE name = ANY(:n)", [MODIFIER_NAME]):
         return reply({"ok": False, "error": f"The modifier agent {MODIFIER_NAME} does not exist yet."})
-    return reply({"ok": True, "job": start_job(apply_job, b["agent"], b["text"], b.get("original") or b["text"]).id})
+    # One modifier run per agent at a time: its edits are computed from the instructions it read
+    return reply({"ok": True, "job": start_job(apply_job, b["agent"], b["text"], b.get("original") or b["text"],
+                                               key=f"tokenboss-apply:{b['agent']}").id})
 
 
 # ---------------------------------------------------------------- performance
@@ -315,14 +317,19 @@ def restore_config(agent, target, reason):
         current = c.execute(text("SELECT to_jsonb(a) FROM aidb.agents a WHERE a.name = :a"), {"a": agent}).scalar()
         if current is None:
             raise ValueError(f"Agent {agent} no longer exists.")
+        tools = cfg_tools(target)
         history_id = c.execute(
             text("INSERT INTO monitor.agent_config_history (agent_name, action, old_config, new_config, reason) "
                  "VALUES (:a, 'revert', CAST(:cur AS jsonb), CAST(:new AS jsonb), :r) RETURNING history_id"),
             {"a": agent, "cur": json.dumps(current), "r": reason,
-             "new": json.dumps({"instructions": cfg_instructions(target), "tools": target.get("tools")})}).scalar()
-        c.execute(text("UPDATE aidb.agents SET instructions = :ins, tools = :tools, updated_at = now() WHERE name = :a"),
-                  {"a": agent, "ins": cfg_instructions(target),
-                   "tools": cfg_tools(target) if isinstance(target.get("tools"), list) else None})
+             "new": json.dumps({"instructions": cfg_instructions(target), "tools": tools})}).scalar()
+        # Unchanged tools are left out, so a tool deleted since then does not block restoring the instructions
+        error = c.execute(text("SELECT error FROM aidb.update_agent(:a, instructions => :ins, "
+                               "tools => CAST(:tools AS text[]))"),
+                          {"a": agent, "ins": cfg_instructions(target),
+                           "tools": None if tools == cfg_tools(current) else tools}).scalar()
+        if error:
+            raise ValueError(error)  # rolls the history row back too
     return history_id
 
 

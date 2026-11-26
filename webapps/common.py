@@ -146,6 +146,8 @@ def start_job(fn, *args, key=None):
         job = Job()
         for k in [k for k, j in JOBS.items() if j.done and time.time() - j.t1 > 3600]:
             del JOBS[k]
+        for k in [k for k, j in RUNNING.items() if j.done]:
+            del RUNNING[k]
         JOBS[job.id] = job
         if key:
             RUNNING[key] = job

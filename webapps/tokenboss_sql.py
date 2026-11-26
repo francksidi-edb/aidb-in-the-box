@@ -464,6 +464,9 @@ BEGIN
       read_only => false
     );
 
+    -- Both tools change the agent through aidb.update_agent, which checks the change (tool names, owner) like for
+    -- any other caller. Each is one MERGE that also records the outcome in monitor.agent_config_history; AIDB runs a
+    -- tool as WITH t AS (<statement>), so the statement itself has to be the write.
     v_name := 'apply_agent_change';
     IF EXISTS (SELECT NULL FROM aidb.sql_tool_registry WHERE name = v_name) THEN
         PERFORM aidb.delete_tool(v_name);
@@ -471,21 +474,33 @@ BEGIN
 
     PERFORM aidb.create_sql_tool(
       name => v_name,
-      description => 'Make one small edit to an agent. Requires the history_id returned by save_agent_snapshot for the same agent. To change the instructions, pass old_text, an exact short snippet copied from the current instructions, and new_text, what replaces it (an empty new_text deletes the snippet). To add a line to the end of the instructions, leave old_text empty and pass the line as new_text. To change the tools, pass new_tools as the full comma-separated list of tool names with no spaces. Leave a parameter as an empty string when it is not part of this edit. Call once per edit. No rows means nothing changed, usually because old_text was not found exactly.',
-      sql_statement => 'UPDATE aidb.agents
-           SET instructions = CASE
-                   WHEN NULLIF(${old_text}, '''') IS NOT NULL THEN REPLACE(instructions, ${old_text}, ${new_text})
-                   WHEN NULLIF(${new_text}, '''') IS NOT NULL THEN instructions || chr(10) || ${new_text}
-                   ELSE instructions END,
-               tools        = CASE WHEN NULLIF(${new_tools}, '''') IS NULL THEN tools
-                                   ELSE string_to_array(${new_tools}, '','') END,
-               updated_at   = now()
-         WHERE name = ${agent_name}
-           AND name NOT IN (''agent_reviewer'', ''agent_modifier'')
-           AND (NULLIF(${old_text}, '''') IS NULL OR POSITION(${old_text} IN instructions) > 0)
-           AND EXISTS (SELECT NULL FROM monitor.agent_config_history h
-                        WHERE h.history_id = CAST(${history_id} AS BIGINT) AND h.agent_name = ${agent_name})
-        RETURNING name AS agent_name',
+      description => 'Make one small edit to an agent. Requires the history_id returned by save_agent_snapshot for the same agent. To change the instructions, pass old_text, an exact short snippet copied from the current instructions, and new_text, what replaces it (an empty new_text deletes the snippet). To add a line to the end of the instructions, leave old_text empty and pass the line as new_text. To change the tools, pass new_tools as the full comma-separated list of tool names with no spaces. Leave a parameter as an empty string when it is not part of this edit. Call once per edit. No rows means nothing changed, usually because old_text was not found exactly. A row with an error means AIDB rejected the edit, for example a tool name that does not exist: nothing changed, and if no earlier edit used this history_id the snapshot is discarded.',
+      sql_statement => 'MERGE INTO monitor.agent_config_history h
+        USING (SELECT e.*,
+                      (SELECT u.error FROM aidb.update_agent(e.name, instructions => e.instructions,
+                                                             tools => e.tools) u) AS error
+                 FROM (SELECT a.name, s.history_id, a.instructions AS old_instructions, a.tools AS old_tools,
+                              CASE WHEN NULLIF(${old_text}, '''') IS NOT NULL
+                                   THEN REPLACE(a.instructions, ${old_text}, ${new_text})
+                                   WHEN NULLIF(${new_text}, '''') IS NOT NULL
+                                   THEN a.instructions || chr(10) || ${new_text}
+                              END AS instructions,
+                              string_to_array(NULLIF(${new_tools}, ''''), '','') AS tools
+                         FROM aidb.agents a
+                         JOIN monitor.agent_config_history s
+                           ON s.history_id = CAST(${history_id} AS BIGINT) AND s.agent_name = a.name
+                        WHERE a.name = ${agent_name}
+                          AND a.name NOT IN (''agent_reviewer'', ''agent_modifier'')
+                          AND (NULLIF(${old_text}, '''') IS NULL OR POSITION(${old_text} IN a.instructions) > 0)) e) p
+           ON h.history_id = p.history_id
+         WHEN MATCHED AND p.error IS NULL THEN
+              UPDATE SET new_config = jsonb_build_object(
+                  ''instructions'', COALESCE(p.instructions, p.old_instructions),
+                  ''tools'', to_jsonb(COALESCE(p.tools, p.old_tools)))
+         -- a rejected first edit changed nothing, so its snapshot must not start a new "since last change" window
+         WHEN MATCHED AND h.new_config IS NULL THEN DELETE
+         WHEN MATCHED THEN UPDATE SET new_config = h.new_config
+        RETURNING p.name AS agent_name, p.error',
       params => aidb.tool_params(
         aidb.tool_param('agent_name', 'TEXT', 'The exact name of the agent to change.'),
         aidb.tool_param('history_id', 'TEXT', 'The history_id number returned by save_agent_snapshot for this agent, for example 7. Never guess it; call save_agent_snapshot first.'),
@@ -503,16 +518,29 @@ BEGIN
 
     PERFORM aidb.create_sql_tool(
       name => v_name,
-      description => 'Undo a change by restoring the instructions and tools saved in a history row. No rows means the history_id was not found.',
-      sql_statement => 'UPDATE aidb.agents a
-           SET instructions = h.old_config->>''instructions'',
-               tools        = CASE WHEN jsonb_typeof(h.old_config->''tools'') = ''array''
-                                   THEN ARRAY(SELECT jsonb_array_elements_text(h.old_config->''tools''))
-                                   ELSE NULL END,
-               updated_at   = now()
-          FROM monitor.agent_config_history h
-         WHERE h.history_id = CAST(${history_id} AS BIGINT) AND a.name = h.agent_name
-        RETURNING a.name AS agent_name',
+      description => 'Undo a change by restoring the instructions and tools saved in a history row. The configuration it replaces is saved as a new history row (new_history_id), so the revert can be undone too. No rows means the history_id or its agent was not found. A row with an error means AIDB rejected the restore, and nothing changed.',
+      sql_statement => 'MERGE INTO monitor.agent_config_history h
+        USING (SELECT t.*,
+                      -- unchanged tools are left out, so a tool deleted since then does not block the instructions
+                      (SELECT u.error FROM aidb.update_agent(t.agent_name, instructions => t.instructions,
+                           tools => NULLIF(t.tools, COALESCE(t.current_tools, ARRAY[]::text[]))) u) AS error
+                 FROM (SELECT s.history_id, s.agent_name, to_jsonb(a) AS current_config, a.tools AS current_tools,
+                              s.old_config->>''instructions'' AS instructions,
+                              CASE WHEN jsonb_typeof(s.old_config->''tools'') = ''array''
+                                   THEN ARRAY(SELECT jsonb_array_elements_text(s.old_config->''tools''))
+                                   ELSE ARRAY[]::text[] END AS tools
+                         FROM monitor.agent_config_history s
+                         JOIN aidb.agents a ON a.name = s.agent_name
+                        WHERE s.history_id = CAST(${history_id} AS BIGINT)) t) p
+           -- matches only on an error, so a successful restore inserts its new history row
+           ON h.history_id = p.history_id AND p.error IS NOT NULL
+         WHEN NOT MATCHED THEN
+              INSERT (agent_name, action, old_config, new_config, reason)
+              VALUES (p.agent_name, ''revert'', p.current_config,
+                      jsonb_build_object(''instructions'', p.instructions, ''tools'', to_jsonb(p.tools)),
+                      ''Revert of change '' || p.history_id)
+         WHEN MATCHED THEN UPDATE SET reason = h.reason
+        RETURNING p.agent_name, p.error, CASE WHEN p.error IS NULL THEN h.history_id END AS new_history_id',
       params => aidb.tool_params(
         aidb.tool_param('history_id', 'TEXT', 'The history_id number from monitor.agent_config_history, for example 7.')
       ),
