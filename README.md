@@ -4,7 +4,7 @@ Try EDB Agent Factory with one command. A single Docker container runs EDB Postg
 
 - **Demo notebooks** grouped as Agents, Cost Optimization and Governance. Read them in the app, download them, or open them in Jupyter.
 - **Apps**: small apps that run on the same database, shown under **Apps** in the menu.
-- **Inspect pages** that show what AIDB holds in the database: models, agents and tools, knowledge bases, pipelines and storage, functions, and a read-only SQL console.
+- **Inspect pages** that show what AIDB holds in the database: models, agents and tools, knowledge bases, pipelines and storage, the AI SQL functions documented in the AIDB docs (listed in `static/aidb-functions.json`), and a read-only SQL console.
 - **A connection check** (the pill at the top right) that shows whether the database is reachable and which extensions are installed.
 
 > **Demo use only.** There is no sign-in on the app or on Jupyter, and the database password defaults to `postgres`. All ports are published on `127.0.0.1`, so only your machine can reach them. Do not expose them on a network or use real data.

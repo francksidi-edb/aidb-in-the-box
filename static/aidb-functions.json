@@ -1,0 +1,1253 @@
+{
+ "title": "AI SQL functions",
+ "about": "The AIDB functions documented in the EDB docs, by docs section. Only these functions are listed.",
+ "docs_base": "https://www.enterprisedb.com/docs/aidb/latest/",
+ "groups": [
+  {
+   "name": "AI SQL functions",
+   "docs": "sql-functions/",
+   "description": "Use the standalone SQL functions in AIDB for chunking, parsing, OCR, summarization, PII detection, AI inference, and reranking. Call them directly in SQL queries or use them as building blocks in custom AI workflows.",
+   "sections": [
+    {
+     "name": "Encoding and generating",
+     "docs": "sql-functions/encode-decode/",
+     "description": "Embedding text and images into vectors and generating text completions",
+     "functions": [
+      {
+       "name": "aidb.encode_text",
+       "summary": "Encodes a single text string into a vector using the specified model.",
+       "docs": "reference/models/#aidbencode_text"
+      },
+      {
+       "name": "aidb.encode_text_batch",
+       "summary": "Encodes an array of text strings into vectors in a single call.",
+       "docs": "reference/models/#aidbencode_text_batch"
+      },
+      {
+       "name": "aidb.encode_text_query",
+       "summary": "Encodes a search query into a vector using the model's query encoding.",
+       "docs": "reference/models/#aidbencode_text_query"
+      },
+      {
+       "name": "aidb.encode_text_query_batch",
+       "summary": "Encodes an array of search queries into vectors in a single call.",
+       "docs": "reference/models/#aidbencode_text_query_batch"
+      },
+      {
+       "name": "aidb.encode_image",
+       "summary": "Encodes a binary image into a vector using a multimodal model (for example, CLIP).",
+       "docs": "reference/models/#aidbencode_image"
+      },
+      {
+       "name": "aidb.generate_text",
+       "summary": "Generates a text response from a prompt using the specified model.",
+       "docs": "reference/models/#aidbgenerate_text"
+      },
+      {
+       "name": "aidb.generate_text_batch",
+       "summary": "Generates text responses for an array of prompts in a single call.",
+       "docs": "reference/models/#aidbgenerate_text_batch"
+      }
+     ]
+    },
+    {
+     "name": "Summarization",
+     "docs": "sql-functions/summarize-text/",
+     "description": "Generating and aggregating AI-powered text summaries",
+     "functions": [
+      {
+       "name": "aidb.summarize_text",
+       "summary": "Generates a concise summary of a text string using a registered language model.",
+       "docs": "reference/functions/#aidbsummarize_text"
+      },
+      {
+       "name": "aidb.summarize_text_aggregate",
+       "summary": "Aggregate version of `aidb.summarize_text`.",
+       "docs": "reference/functions/#aidbsummarize_text_aggregate"
+      }
+     ]
+    },
+    {
+     "name": "PII detection",
+     "docs": "sql-functions/pii-detection/",
+     "description": "Finding and redacting personal data in text",
+     "functions": [
+      {
+       "name": "aidb.pii_extract",
+       "summary": "Finds PII spans in a text string using a registered `onnx_token_classifier` model.",
+       "docs": "reference/functions/#aidbpii_extract"
+      },
+      {
+       "name": "aidb.pii_extract_batch",
+       "summary": "Batch version of `aidb.pii_extract`.",
+       "docs": "reference/functions/#aidbpii_extract_batch"
+      },
+      {
+       "name": "aidb.pii_redact",
+       "summary": "Replaces each PII span in a text string with a placeholder.",
+       "docs": "reference/functions/#aidbpii_redact"
+      },
+      {
+       "name": "aidb.pii_redact_batch",
+       "summary": "Batch version of `aidb.pii_redact`.",
+       "docs": "reference/functions/#aidbpii_redact_batch"
+      }
+     ]
+    },
+    {
+     "name": "Reranking",
+     "docs": "sql-functions/rerank-text/",
+     "description": "Scoring and reordering candidate passages by relevance",
+     "functions": [
+      {
+       "name": "aidb.rerank_text",
+       "summary": "Scores and ranks a set of text inputs against a query using a reranking model.",
+       "docs": "reference/models/#aidbrerank_text"
+      }
+     ]
+    },
+    {
+     "name": "OCR",
+     "docs": "sql-functions/perform-ocr/",
+     "description": "Extracting text from images using an OCR-capable model",
+     "functions": [
+      {
+       "name": "aidb.perform_ocr",
+       "summary": "Extracts text from image data using a registered OCR-capable model.",
+       "docs": "reference/functions/#aidbperform_ocr"
+      }
+     ]
+    },
+    {
+     "name": "Parsing",
+     "docs": "sql-functions/parse/",
+     "description": "Extracting readable text from HTML and PDF inputs",
+     "functions": [
+      {
+       "name": "aidb.parse_html",
+       "summary": "Extracts readable text from an HTML string, stripping tags while preserving structure.",
+       "docs": "reference/functions/#aidbparse_html"
+      },
+      {
+       "name": "aidb.parse_pdf",
+       "summary": "Extracts text from binary PDF data.",
+       "docs": "reference/functions/#aidbparse_pdf"
+      }
+     ]
+    },
+    {
+     "name": "Chunking",
+     "docs": "sql-functions/chunk-text/",
+     "description": "Splitting text into segments for LLM context windows",
+     "functions": [
+      {
+       "name": "aidb.chunk_text",
+       "summary": "Divides a text string into smaller, semantically coherent segments.",
+       "docs": "reference/functions/#aidbchunk_text"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Models",
+   "docs": "reference/models/",
+   "description": "API reference for AIDB model management, inference functions, and model configuration helpers.",
+   "sections": [
+    {
+     "name": "Model management functions",
+     "docs": "reference/models/",
+     "functions": [
+      {
+       "name": "aidb.create_model",
+       "summary": "Registers a new model in the AIDB model registry.",
+       "docs": "reference/models/#aidbcreate_model"
+      },
+      {
+       "name": "aidb.get_model",
+       "summary": "Returns the configuration for a registered model.",
+       "docs": "reference/models/#aidbget_model"
+      },
+      {
+       "name": "aidb.delete_model",
+       "summary": "Removes a model from the registry.",
+       "docs": "reference/models/#aidbdelete_model"
+      },
+      {
+       "name": "aidb.validate_model",
+       "summary": "Probes a registered model to confirm it's functional, running a minimal test inference.",
+       "docs": "reference/models/#aidbvalidate_model"
+      }
+     ],
+     "views": [
+      {
+       "name": "aidb.models",
+       "summary": "Lists all models in the registry, including default and user-created models.",
+       "docs": "reference/models/#aidbmodels"
+      },
+      {
+       "name": "aidb.model_providers",
+       "summary": "Lists the model providers you can pass to `aidb.create_model()`.",
+       "docs": "reference/models/#aidbmodel_providers"
+      }
+     ]
+    },
+    {
+     "name": "Credential management functions",
+     "docs": "reference/models/",
+     "functions": [
+      {
+       "name": "aidb.create_credential",
+       "summary": "Creates a credential.",
+       "docs": "reference/models/#aidbcreate_credential"
+      },
+      {
+       "name": "aidb.create_aws_credential",
+       "summary": "Creates a credential for models that sign requests with the PostgreSQL server's AWS credentials.",
+       "docs": "reference/models/#aidbcreate_aws_credential"
+      },
+      {
+       "name": "aidb.update_credential",
+       "summary": "Changes a credential's secret, endpoint, or sharing.",
+       "docs": "reference/models/#aidbupdate_credential"
+      },
+      {
+       "name": "aidb.delete_credential",
+       "summary": "Deletes a credential and its secret.",
+       "docs": "reference/models/#aidbdelete_credential"
+      },
+      {
+       "name": "aidb.validate_endpoint_pattern",
+       "summary": "Checks an endpoint pattern and returns it in normalized form.",
+       "docs": "reference/models/#aidbvalidate_endpoint_pattern"
+      },
+      {
+       "name": "aidb.endpoint_host",
+       "summary": "Returns the host a model of the given provider calls for the given URL.",
+       "docs": "reference/models/#aidbendpoint_host"
+      }
+     ],
+     "views": [
+      {
+       "name": "aidb.credentials",
+       "summary": "Lists the model credentials.",
+       "docs": "reference/models/#aidbcredentials"
+      }
+     ]
+    },
+    {
+     "name": "HCP model functions",
+     "docs": "reference/models/",
+     "functions": [
+      {
+       "name": "aidb.list_hcp_models",
+       "summary": "Lists models currently running on HM.",
+       "docs": "reference/models/#aidblist_hcp_models"
+      },
+      {
+       "name": "aidb.create_hcp_model",
+       "summary": "Registers an HCP-hosted model by referencing its running instance name.",
+       "docs": "reference/models/#aidbcreate_hcp_model"
+      },
+      {
+       "name": "aidb.sync_hcp_models",
+       "summary": "Synchronizes the AIDB model registry with models currently running on HCP.",
+       "docs": "reference/models/#aidbsync_hcp_models"
+      }
+     ]
+    },
+    {
+     "name": "Model config helpers",
+     "docs": "reference/models/",
+     "functions": [
+      {
+       "name": "aidb.aws_default_credentials",
+       "summary": "Returns the config keys that make a model sign its requests with the PostgreSQL server's AWS credentials instead of an API key.",
+       "docs": "reference/models/#aidbaws_default_credentials"
+      },
+      {
+       "name": "aidb.embeddings_config",
+       "summary": "For `openai_embeddings` and any OpenAI-compatible embeddings endpoint.",
+       "docs": "reference/models/#aidbembeddings_config"
+      },
+      {
+       "name": "aidb.completions_config",
+       "summary": "For `openai_completions` and any OpenAI-compatible completions endpoint.",
+       "docs": "reference/models/#aidbcompletions_config"
+      },
+      {
+       "name": "aidb.max_tokens_config",
+       "summary": "Builds the `max_tokens` object for use with `aidb.completions_config()`.",
+       "docs": "reference/models/#aidbmax_tokens_config"
+      },
+      {
+       "name": "aidb.bert_config",
+       "summary": "For the `bert_local` provider.",
+       "docs": "reference/models/#aidbbert_config"
+      },
+      {
+       "name": "aidb.clip_config",
+       "summary": "For the `clip_local` provider.",
+       "docs": "reference/models/#aidbclip_config"
+      },
+      {
+       "name": "aidb.llama_config",
+       "summary": "For the `llama_instruct_local` provider.",
+       "docs": "reference/models/#aidbllama_config"
+      },
+      {
+       "name": "aidb.t5_config",
+       "summary": "For the `t5_local` provider.",
+       "docs": "reference/models/#aidbt5_config"
+      },
+      {
+       "name": "aidb.gemini_config",
+       "summary": "For the `gemini` provider.",
+       "docs": "reference/models/#aidbgemini_config"
+      },
+      {
+       "name": "aidb.nim_clip_config",
+       "summary": "For the `nim_clip` provider (NVIDIA NIM multimodal embeddings).",
+       "docs": "reference/models/#aidbnim_clip_config"
+      },
+      {
+       "name": "aidb.nim_ocr_config",
+       "summary": "For the `nim_paddle_ocr` provider (NVIDIA NIM OCR).",
+       "docs": "reference/models/#aidbnim_ocr_config"
+      },
+      {
+       "name": "aidb.nim_reranking_config",
+       "summary": "For the `nim_reranking` provider.",
+       "docs": "reference/models/#aidbnim_reranking_config"
+      },
+      {
+       "name": "aidb.openrouter_chat_config",
+       "summary": "For the `openrouter_chat` provider.",
+       "docs": "reference/models/#aidbopenrouter_chat_config"
+      },
+      {
+       "name": "aidb.openrouter_embeddings_config",
+       "summary": "For the `openrouter_embeddings` provider.",
+       "docs": "reference/models/#aidbopenrouter_embeddings_config"
+      },
+      {
+       "name": "aidb.openai_responses_config",
+       "summary": "For the `openai_responses` and `openai_responses_azure` providers.",
+       "docs": "reference/models/#aidbopenai_responses_config"
+      },
+      {
+       "name": "aidb.anthropic_messages_config",
+       "summary": "For the `anthropic_messages`, `anthropic_messages_azure`, and `anthropic_messages_bedrock` providers.",
+       "docs": "reference/models/#aidbanthropic_messages_config"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Knowledge bases",
+   "docs": "reference/knowledge-bases/",
+   "description": "API reference for AIDB knowledge base views, retrieval functions, volume management, and auto-processing configuration.",
+   "sections": [
+    {
+     "name": "Knowledge base functions",
+     "docs": "reference/knowledge-bases/",
+     "functions": [
+      {
+       "name": "aidb.retrieve_key",
+       "summary": "Returns the source record keys and distances for the top matching embeddings, without fetching source data.",
+       "docs": "reference/knowledge-bases/#aidbretrieve_key"
+      },
+      {
+       "name": "aidb.retrieve_text",
+       "summary": "Returns source text and distances for the top matching embeddings by joining the embeddings table with the source table.",
+       "docs": "reference/knowledge-bases/#aidbretrieve_text"
+      },
+      {
+       "name": "aidb.delete_knowledge_base",
+       "summary": "Cascades: deletes all pipelines attached to the knowledge base, drops the vector table, and removes the registry entry.",
+       "docs": "reference/knowledge-bases/#aidbdelete_knowledge_base"
+      }
+     ],
+     "views": [
+      {
+       "name": "aidb.knowledge_bases",
+       "summary": "Lists all knowledge bases in the database with their full configuration.",
+       "docs": "reference/knowledge-bases/#aidbknowledge_bases",
+       "alias": "aidb.kbs"
+      },
+      {
+       "name": "aidb.knowledge_base_metrics",
+       "summary": "Aggregated stats for each knowledge base — pipeline count, embedding row count, and the worst pipeline status.",
+       "docs": "reference/knowledge-bases/#aidbknowledge_base_metrics",
+       "alias": "aidb.kbm"
+      }
+     ]
+    },
+    {
+     "name": "Volume management functions",
+     "docs": "reference/knowledge-bases/",
+     "functions": [
+      {
+       "name": "aidb.create_volume",
+       "summary": "Creates an AIDB volume from a PGFS storage location.",
+       "docs": "reference/knowledge-bases/#aidbcreate_volume"
+      },
+      {
+       "name": "aidb.delete_volume",
+       "summary": "Deletes an AIDB volume.",
+       "docs": "reference/knowledge-bases/#aidbdelete_volume"
+      }
+     ],
+     "views": [
+      {
+       "name": "aidb.volumes",
+       "summary": "View that lists all AIDB volumes in the database.",
+       "docs": "reference/knowledge-bases/#aidbvolumes"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Semantic knowledge bases",
+   "docs": "reference/semantic-knowledge-bases/",
+   "description": "API reference for AIDB semantic knowledge base functions — creating and managing a KB, relationships, comment curation, search, and health checks.",
+   "sections": [
+    {
+     "name": "Creating and managing a semantic KB",
+     "docs": "reference/semantic-knowledge-bases/",
+     "functions": [
+      {
+       "name": "aidb.create_semantic_kb",
+       "summary": "Creates a semantic KB over one or more schemas, embeds the schema metadata with the given model, and crawls the schemas immediately.",
+       "docs": "reference/semantic-knowledge-bases/#aidbcreate_semantic_kb"
+      },
+      {
+       "name": "aidb.list_semantic_kbs",
+       "summary": "Lists every semantic KB with its model, schemas, and processing mode.",
+       "docs": "reference/semantic-knowledge-bases/#aidblist_semantic_kbs"
+      },
+      {
+       "name": "aidb.refresh_semantic_kb",
+       "summary": "Re-crawls a KB's schemas from scratch to pick up structural changes, and republishes the KB's managed agent plugin and its tools.",
+       "docs": "reference/semantic-knowledge-bases/#aidbrefresh_semantic_kb"
+      },
+      {
+       "name": "aidb.update_semantic_kb_auto_processing",
+       "summary": "Changes how a KB reacts to schema changes after creation.",
+       "docs": "reference/semantic-knowledge-bases/#aidbupdate_semantic_kb_auto_processing"
+      },
+      {
+       "name": "aidb.update_semantic_kb_context",
+       "summary": "Stores your own description of a KB, such as business terms or how its tables relate.",
+       "docs": "reference/semantic-knowledge-bases/#aidbupdate_semantic_kb_context"
+      },
+      {
+       "name": "aidb.semantic_kb_stats",
+       "summary": "Returns entity counts and pending-change status for a KB.",
+       "docs": "reference/semantic-knowledge-bases/#aidbsemantic_kb_stats"
+      },
+      {
+       "name": "aidb.delete_semantic_kb",
+       "summary": "Deletes a KB, its indexed metadata, and its business glossary.",
+       "docs": "reference/semantic-knowledge-bases/#aidbdelete_semantic_kb"
+      }
+     ]
+    },
+    {
+     "name": "Searching a semantic KB",
+     "docs": "reference/semantic-knowledge-bases/",
+     "functions": [
+      {
+       "name": "aidb.semantic_kb_search",
+       "summary": "The composite entry point: runs the per-source ranked searches (schema metadata, relationships, curated semantic aliases, query history, and business glossary concepts) and fuses them into one ranked list with Reciprocal Rank Fusion (RRF).",
+       "docs": "reference/semantic-knowledge-bases/#aidbsemantic_kb_search"
+      },
+      {
+       "name": "aidb.get_metadata",
+       "summary": "The broadest schema search: returns columns, tables, and views together with full metadata.",
+       "docs": "reference/semantic-knowledge-bases/#aidbget_metadata"
+      },
+      {
+       "name": "aidb.get_entity_definitions",
+       "summary": "Matches tables and views only.",
+       "docs": "reference/semantic-knowledge-bases/#aidbget_entity_definitions"
+      },
+      {
+       "name": "aidb.get_column_definitions",
+       "summary": "Returns just the matching column and table definitions — the leanest result, useful as compact grounding for SQL generation.",
+       "docs": "reference/semantic-knowledge-bases/#aidbget_column_definitions"
+      },
+      {
+       "name": "aidb.search_by_comment",
+       "summary": "Matches only the natural-language `COMMENT ON` text attached to schemas, tables, and columns.",
+       "docs": "reference/semantic-knowledge-bases/#aidbsearch_by_comment"
+      },
+      {
+       "name": "aidb.semantic_kb_subgraph",
+       "summary": "Returns a question's neighborhood: seeds from the search hits and adds the relationships around them, so you get the joins connected to a question, not just the entities.",
+       "docs": "reference/semantic-knowledge-bases/#aidbsemantic_kb_subgraph"
+      }
+     ]
+    },
+    {
+     "name": "Managing a business glossary",
+     "docs": "reference/semantic-knowledge-bases/",
+     "functions": [
+      {
+       "name": "aidb.semantic_kb_import_concepts",
+       "summary": "Writes a business glossary document into the term store of a KB and embeds its new and changed concepts.",
+       "docs": "reference/semantic-knowledge-bases/#aidbsemantic_kb_import_concepts"
+      }
+     ]
+    },
+    {
+     "name": "Managing relationships",
+     "docs": "reference/semantic-knowledge-bases/",
+     "functions": [
+      {
+       "name": "aidb.list_relationships",
+       "summary": "Lists recorded relationships, optionally filtered.",
+       "docs": "reference/semantic-knowledge-bases/#aidblist_relationships"
+      },
+      {
+       "name": "aidb.find_join_path",
+       "summary": "Finds a route between two tables, ranked shortest first, then by confidence.",
+       "docs": "reference/semantic-knowledge-bases/#aidbfind_join_path"
+      },
+      {
+       "name": "aidb.suggest_joins",
+       "summary": "Lists every relationship one hop from a given set of tables, in either direction.",
+       "docs": "reference/semantic-knowledge-bases/#aidbsuggest_joins"
+      },
+      {
+       "name": "aidb.add_relationship",
+       "summary": "Records a relationship by hand.",
+       "docs": "reference/semantic-knowledge-bases/#aidbadd_relationship"
+      },
+      {
+       "name": "aidb.add_relationship_as_agent",
+       "summary": "Records a relationship the same way as `aidb.add_relationship()`, but always sets `source = 'agent'`.",
+       "docs": "reference/semantic-knowledge-bases/#aidbadd_relationship_as_agent"
+      },
+      {
+       "name": "aidb.delete_relationship",
+       "summary": "Deletes a relationship.",
+       "docs": "reference/semantic-knowledge-bases/#aidbdelete_relationship"
+      },
+      {
+       "name": "aidb.relationship_drift",
+       "summary": "Detects and repairs drift on hand-added relationships when a named column is renamed or dropped.",
+       "docs": "reference/semantic-knowledge-bases/#aidbrelationship_drift"
+      },
+      {
+       "name": "aidb.update_semantic_kb_history_filter",
+       "summary": "Sets the roles whose statements query history doesn't learn from, and deletes the statements those roles already contributed.",
+       "docs": "reference/semantic-knowledge-bases/#aidbupdate_semantic_kb_history_filter"
+      },
+      {
+       "name": "aidb.import_query_history",
+       "summary": "Reads `pg_stat_statements` to find joins the application runs but the schema never declared.",
+       "docs": "reference/semantic-knowledge-bases/#aidbimport_query_history"
+      },
+      {
+       "name": "aidb.relationship_candidates",
+       "summary": "Lists relationship candidates derived from query history that aren't yet known relationships.",
+       "docs": "reference/semantic-knowledge-bases/#aidbrelationship_candidates"
+      },
+      {
+       "name": "aidb.accept_relationship_candidates",
+       "summary": "Accepts one or more relationship candidates, making them routable.",
+       "docs": "reference/semantic-knowledge-bases/#aidbaccept_relationship_candidates"
+      },
+      {
+       "name": "aidb.classify_query_history_statement",
+       "summary": "Explains why a single statement would or wouldn't be used by `import_query_history()` — the quickest way to understand an import that ingested less than expected.",
+       "docs": "reference/semantic-knowledge-bases/#aidbclassify_query_history_statement"
+      },
+      {
+       "name": "aidb.list_query_history",
+       "summary": "Lists the normalized statements, relations touched, and join predicates recorded by `import_query_history()`, most-run first.",
+       "docs": "reference/semantic-knowledge-bases/#aidblist_query_history"
+      }
+     ]
+    },
+    {
+     "name": "Managing descriptions and curation",
+     "docs": "reference/semantic-knowledge-bases/",
+     "functions": [
+      {
+       "name": "aidb.add_comment_to_object",
+       "summary": "Writes a `COMMENT ON` for a table, view, column, or constraint, and reconciles every KB that indexes the object so the new text is searchable immediately.",
+       "docs": "reference/semantic-knowledge-bases/#aidbadd_comment_to_object"
+      },
+      {
+       "name": "aidb.remove_comment",
+       "summary": "Clears a description.",
+       "docs": "reference/semantic-knowledge-bases/#aidbremove_comment"
+      },
+      {
+       "name": "aidb.list_proposed_comments",
+       "summary": "Lists comment writes queued for review under curation.",
+       "docs": "reference/semantic-knowledge-bases/#aidblist_proposed_comments"
+      },
+      {
+       "name": "aidb.resolve_object_comment",
+       "summary": "Approves or rejects a proposed comment.",
+       "docs": "reference/semantic-knowledge-bases/#aidbresolve_object_comment"
+      },
+      {
+       "name": "aidb.update_semantic_kb_curation",
+       "summary": "Turns the comment-review queue on or off for a KB.",
+       "docs": "reference/semantic-knowledge-bases/#aidbupdate_semantic_kb_curation"
+      },
+      {
+       "name": "aidb.semantic_kb_audit",
+       "summary": "Lists recorded semantic KB operations.",
+       "docs": "reference/semantic-knowledge-bases/#aidbsemantic_kb_audit"
+      },
+      {
+       "name": "aidb.semkb_audit_prune",
+       "summary": "Deletes the audit records of one knowledge base that are older than a given age.",
+       "docs": "reference/semantic-knowledge-bases/#aidbsemkb_audit_prune"
+      }
+     ]
+    },
+    {
+     "name": "Inspecting KB health",
+     "docs": "reference/semantic-knowledge-bases/",
+     "functions": [
+      {
+       "name": "aidb.semantic_kb_health_report",
+       "summary": "Returns one row that summarizes the health of a semantic KB.",
+       "docs": "reference/semantic-knowledge-bases/#aidbsemantic_kb_health_report"
+      },
+      {
+       "name": "aidb.semantic_kb_coverage_gaps",
+       "summary": "Lists live tables, views, and columns that have no description embedding, ordered by entity type and then by name.",
+       "docs": "reference/semantic-knowledge-bases/#aidbsemantic_kb_coverage_gaps"
+      },
+      {
+       "name": "aidb.semantic_kb_stale_objects",
+       "summary": "Lists objects that have DDL events queued but not yet re-embedded, with the longest-waiting first.",
+       "docs": "reference/semantic-knowledge-bases/#aidbsemantic_kb_stale_objects"
+      },
+      {
+       "name": "aidb.semantic_kb_orphan_relationships",
+       "summary": "Lists relationships whose relation endpoint, junction endpoint, or a listed column no longer exists in the live catalog, including `retired` relationships.",
+       "docs": "reference/semantic-knowledge-bases/#aidbsemantic_kb_orphan_relationships"
+      },
+      {
+       "name": "aidb.semantic_kb_alias_diagnostics",
+       "summary": "Lists the semantic aliases of a semantic KB that aren't verified against the live catalog, ordered by alias name.",
+       "docs": "reference/semantic-knowledge-bases/#aidbsemantic_kb_alias_diagnostics"
+      },
+      {
+       "name": "aidb.semantic_kb_object_usage",
+       "summary": "Reports how often each object appeared in recorded search results and alias executions, and when it last did.",
+       "docs": "reference/semantic-knowledge-bases/#aidbsemantic_kb_object_usage"
+      }
+     ]
+    },
+    {
+     "name": "Creating and managing aliases",
+     "docs": "reference/semantic-knowledge-bases/",
+     "functions": [
+      {
+       "name": "aidb.create_semantic_alias",
+       "summary": "Creates a named, parameterized SQL query paired with a natural-language description, and embeds the description in every semantic KB that owns the query's schema(s).",
+       "docs": "reference/semantic-knowledge-bases/#aidbcreate_semantic_alias"
+      },
+      {
+       "name": "aidb.search_semantic_aliases",
+       "summary": "Searches aliases by natural-language query, embedding the query once per distinct model among the searched KBs so results stay dimension-safe and de-duplicated to the best match per alias.",
+       "docs": "reference/semantic-knowledge-bases/#aidbsearch_semantic_aliases"
+      },
+      {
+       "name": "aidb.execute_semantic_alias",
+       "summary": "Runs an alias by name, substituting its parameters.",
+       "docs": "reference/semantic-knowledge-bases/#aidbexecute_semantic_alias"
+      },
+      {
+       "name": "aidb.get_semantic_aliases",
+       "summary": "Lists every alias, with its name, description, query text, and parameter count.",
+       "docs": "reference/semantic-knowledge-bases/#aidbget_semantic_aliases"
+      },
+      {
+       "name": "aidb.get_semantic_alias",
+       "summary": "Gets one alias by name, with its full definition: description, query text, and parameter list.",
+       "docs": "reference/semantic-knowledge-bases/#aidbget_semantic_alias"
+      },
+      {
+       "name": "aidb.update_semantic_alias",
+       "summary": "Updates an alias.",
+       "docs": "reference/semantic-knowledge-bases/#aidbupdate_semantic_alias"
+      },
+      {
+       "name": "aidb.delete_semantic_alias",
+       "summary": "Deletes an alias by name.",
+       "docs": "reference/semantic-knowledge-bases/#aidbdelete_semantic_alias"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Pipelines",
+   "docs": "data-pipelines/reference/",
+   "description": "Reference documentation for the EDB AI pipelines API: types, views, core functions, and configuration helpers.",
+   "sections": [
+    {
+     "name": "Pipeline functions",
+     "docs": "data-pipelines/reference/",
+     "functions": [
+      {
+       "name": "aidb.create_pipeline",
+       "summary": "Creates a new pipeline with a source, up to 10 sequential processing steps, and an optional destination.",
+       "docs": "data-pipelines/reference/#aidbcreate_pipeline"
+      },
+      {
+       "name": "aidb.update_pipeline",
+       "summary": "Updates the auto-processing settings for an existing pipeline.",
+       "docs": "data-pipelines/reference/#aidbupdate_pipeline"
+      },
+      {
+       "name": "aidb.delete_pipeline",
+       "summary": "Deletes a pipeline and its configuration.",
+       "docs": "data-pipelines/reference/#aidbdelete_pipeline"
+      },
+      {
+       "name": "aidb.run_pipeline",
+       "summary": "Manually triggers a pipeline to execute immediately, regardless of its `auto_processing` mode.",
+       "docs": "data-pipelines/reference/#aidbrun_pipeline"
+      },
+      {
+       "name": "aidb.get_pipeline_metrics",
+       "summary": "Returns current processing statistics for a pipeline.",
+       "docs": "data-pipelines/reference/#aidbget_pipeline_metrics"
+      }
+     ],
+     "views": [
+      {
+       "name": "aidb.pipelines",
+       "summary": "Lists all registered pipelines and their configuration, including source, destination, processing mode, and step definitions.",
+       "docs": "data-pipelines/reference/#aidbpipelines",
+       "alias": "aidb.pipes"
+      },
+      {
+       "name": "aidb.pipeline_metrics",
+       "summary": "Shows current processing statistics for each pipeline.",
+       "docs": "data-pipelines/reference/#aidbpipeline_metrics",
+       "alias": "aidb.pipem"
+      }
+     ]
+    },
+    {
+     "name": "Pipeline step config helpers",
+     "docs": "data-pipelines/reference/",
+     "functions": [
+      {
+       "name": "aidb.chunk_text_config",
+       "summary": "Configures a `ChunkText` step to split text into smaller segments.",
+       "docs": "data-pipelines/reference/#aidbchunk_text_config"
+      },
+      {
+       "name": "aidb.summarize_text_config",
+       "summary": "Configures a `SummarizeText` step to summarize text using a language model.",
+       "docs": "data-pipelines/reference/#aidbsummarize_text_config"
+      },
+      {
+       "name": "aidb.ocr_config",
+       "summary": "Configures a `PerformOcr` step to extract text from images using a model.",
+       "docs": "data-pipelines/reference/#aidbocr_config"
+      },
+      {
+       "name": "aidb.html_parse_config",
+       "summary": "Configures a `ParseHtml` step to extract text from HTML content.",
+       "docs": "data-pipelines/reference/#aidbhtml_parse_config"
+      },
+      {
+       "name": "aidb.pdf_parse_config",
+       "summary": "Configures a `ParsePdf` step to extract content from PDF documents.",
+       "docs": "data-pipelines/reference/#aidbpdf_parse_config"
+      },
+      {
+       "name": "aidb.knowledge_base_config",
+       "summary": "Configures a `KnowledgeBase` step to compute and store embeddings.",
+       "docs": "data-pipelines/reference/#aidbknowledge_base_config"
+      },
+      {
+       "name": "aidb.knowledge_base_config_from_kb",
+       "summary": "Configures a `KnowledgeBase` step to attach a pipeline to an existing knowledge base rather than creating a new one.",
+       "docs": "data-pipelines/reference/#aidbknowledge_base_config_from_kb"
+      },
+      {
+       "name": "aidb.inference_config",
+       "summary": "Builds a JSONB configuration object for runtime inference settings.",
+       "docs": "reference/models/#aidbinference_config"
+      }
+     ]
+    },
+    {
+     "name": "Vector index config helpers",
+     "docs": "data-pipelines/reference/",
+     "functions": [
+      {
+       "name": "aidb.vector_index_hnsw_config",
+       "summary": "Configures an HNSW index (pgvector).",
+       "docs": "data-pipelines/reference/#aidbvector_index_hnsw_config"
+      },
+      {
+       "name": "aidb.vector_index_ivfflat_config",
+       "summary": "Configures a pgvector IVFFlat index.",
+       "docs": "data-pipelines/reference/#aidbvector_index_ivfflat_config"
+      },
+      {
+       "name": "aidb.vector_index_chord_hnsw_config",
+       "summary": "Configures a VectorChord HNSW index.",
+       "docs": "data-pipelines/reference/#aidbvector_index_chord_hnsw_config"
+      },
+      {
+       "name": "aidb.vector_index_chord_vchordq_config",
+       "summary": "Configures a VectorChord `vchordq` index.",
+       "docs": "data-pipelines/reference/#aidbvector_index_chord_vchordq_config"
+      },
+      {
+       "name": "aidb.vector_index_hsphere_optimized_config",
+       "summary": "Configures an HSphere Optimized index.",
+       "docs": "data-pipelines/reference/#aidbvector_index_hsphere_optimized_config"
+      },
+      {
+       "name": "aidb.vector_index_disabled_config",
+       "summary": "Disables automatic vector index creation.",
+       "docs": "data-pipelines/reference/#aidbvector_index_disabled_config"
+      }
+     ]
+    },
+    {
+     "name": "Error log functions",
+     "docs": "reference/operations/",
+     "functions": [
+      {
+       "name": "aidb.get_error_logs",
+       "summary": "Returns error log entries for a pipeline, with optional filters.",
+       "docs": "reference/operations/#aidbget_error_logs"
+      },
+      {
+       "name": "aidb.get_error_log_summary",
+       "summary": "Returns aggregated error counts for a single pipeline, grouped by step, operation, and category.",
+       "docs": "reference/operations/#aidbget_error_log_summary"
+      },
+      {
+       "name": "aidb.get_all_error_summaries",
+       "summary": "Returns the same rollup as `aidb.get_error_log_summary()` but across all pipelines at once.",
+       "docs": "reference/operations/#aidbget_all_error_summaries"
+      },
+      {
+       "name": "aidb.clear_error_logs",
+       "summary": "Deletes specific error log entries by ID.",
+       "docs": "reference/operations/#aidbclear_error_logs"
+      },
+      {
+       "name": "aidb.requeue_pipeline_errors",
+       "summary": "Deletes the targeted record-level error log entries and marks their source records dirty on the pipeline's state surface.",
+       "docs": "reference/operations/#aidbrequeue_pipeline_errors"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Agents",
+   "docs": "reference/agents/",
+   "description": "API reference for AIDB agent management, conversations, and structured output helpers.",
+   "sections": [
+    {
+     "name": "Agent management functions",
+     "docs": "reference/agents/",
+     "functions": [
+      {
+       "name": "aidb.create_agent",
+       "summary": "Registers a new agent.",
+       "docs": "reference/agents/#aidbcreate_agent"
+      },
+      {
+       "name": "aidb.update_agent",
+       "summary": "Updates an existing agent.",
+       "docs": "reference/agents/#aidbupdate_agent"
+      },
+      {
+       "name": "aidb.delete_agent",
+       "summary": "Deletes an agent by name.",
+       "docs": "reference/agents/#aidbdelete_agent"
+      }
+     ],
+     "views": [
+      {
+       "name": "aidb.agents",
+       "summary": "Agent configuration. There's no dedicated \"list agents\" function — query this table directly.",
+       "docs": "reference/agents/#aidbagents"
+      },
+      {
+       "name": "aidb.agent_tasks",
+       "summary": "One row per `agent_converse` call (a \"task\"), including its lifecycle status.",
+       "docs": "reference/agents/#aidbagent_tasks"
+      }
+     ]
+    },
+    {
+     "name": "Conversation functions",
+     "docs": "reference/agents/",
+     "functions": [
+      {
+       "name": "aidb.agent_converse",
+       "summary": "Runs an agent's reasoning loop against a prompt and returns its answer.",
+       "docs": "reference/agents/#aidbagent_converse"
+      },
+      {
+       "name": "aidb.start_agent_session",
+       "summary": "Mints a fresh conversation id for a named agent, ahead of the first `agent_converse` call that will use it.",
+       "docs": "reference/agents/#aidbstart_agent_session"
+      },
+      {
+       "name": "aidb.get_conversation",
+       "summary": "Retrieves a conversation's messages — every user prompt and final answer, in chronological order.",
+       "docs": "reference/agents/#aidbget_conversation"
+      },
+      {
+       "name": "aidb.get_message",
+       "summary": "Retrieves one message's plain-text contents by id.",
+       "docs": "reference/agents/#aidbget_message"
+      }
+     ],
+     "views": [
+      {
+       "name": "aidb.conversations",
+       "summary": "One row per conversation, aggregated from `aidb.conversation_log`.",
+       "docs": "reference/agents/#aidbconversations"
+      },
+      {
+       "name": "aidb.conversation_log",
+       "summary": "Every user prompt and agent answer, across every conversation — the same rows `aidb.get_conversation()` returns, unfiltered by `conversation_id`.",
+       "docs": "reference/agents/#aidbconversation_log"
+      }
+     ]
+    },
+    {
+     "name": "Structured output helpers",
+     "docs": "reference/agents/",
+     "functions": [
+      {
+       "name": "aidb.output_field",
+       "summary": "Builds one field of an agent's structured output schema.",
+       "docs": "reference/agents/#aidboutput_field"
+      },
+      {
+       "name": "aidb.output_type",
+       "summary": "Builds a complete structured output schema from one or more fields.",
+       "docs": "reference/agents/#aidboutput_type"
+      }
+     ]
+    },
+    {
+     "name": "Agent plugin functions",
+     "docs": "reference/agents/",
+     "functions": [
+      {
+       "name": "aidb.create_agent_plugin",
+       "summary": "Registers a new plugin.",
+       "docs": "reference/agents/#aidbcreate_agent_plugin"
+      },
+      {
+       "name": "aidb.update_agent_plugin",
+       "summary": "Updates an existing plugin.",
+       "docs": "reference/agents/#aidbupdate_agent_plugin"
+      },
+      {
+       "name": "aidb.delete_agent_plugin",
+       "summary": "Deletes a plugin by name.",
+       "docs": "reference/agents/#aidbdelete_agent_plugin"
+      },
+      {
+       "name": "aidb.get_mcp_agents",
+       "summary": "Lists agents as MCP tool descriptors.",
+       "docs": "reference/agents/#aidbget_mcp_agents"
+      }
+     ],
+     "views": [
+      {
+       "name": "aidb.agent_plugins",
+       "summary": "Agent plugins and their content. Read-only: create, change, and delete plugins with the agent plugin functions.",
+       "docs": "reference/agents/#aidbagent_plugins"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Tools",
+   "docs": "reference/tools/",
+   "description": "API reference for AIDB's tool catalog, SQL tool registration, and MCP server management.",
+   "sections": [
+    {
+     "name": "Tool management functions",
+     "docs": "reference/tools/",
+     "functions": [
+      {
+       "name": "aidb.create_sql_tool",
+       "summary": "Registers a parameterized SQL query as a tool.",
+       "docs": "reference/tools/#aidbcreate_sql_tool"
+      },
+      {
+       "name": "aidb.delete_tool",
+       "summary": "Deletes a SQL tool or an MCP server registration by name (removing every tool the server advertised along with it).",
+       "docs": "reference/tools/#aidbdelete_tool"
+      },
+      {
+       "name": "aidb.import_mcp_tools",
+       "summary": "Registers an external MCP server and imports the tools it advertises.",
+       "docs": "reference/tools/#aidbimport_mcp_tools"
+      },
+      {
+       "name": "aidb.refresh_mcp_tools",
+       "summary": "Re-fetches an already-registered MCP server's advertised tools and refreshes the cache.",
+       "docs": "reference/tools/#aidbrefresh_mcp_tools"
+      },
+      {
+       "name": "aidb.set_mcp_shared",
+       "summary": "Changes whether every member of `aidb_users` can call a registered MCP server's tools.",
+       "docs": "reference/tools/#aidbset_mcp_shared"
+      },
+      {
+       "name": "aidb.get_mcp_tools",
+       "summary": "Converts every currently registered tool (native, SQL, and MCP alike) into an MCP `tools/list`-shaped descriptor.",
+       "docs": "reference/tools/#aidbget_mcp_tools"
+      },
+      {
+       "name": "aidb.run_tool",
+       "summary": "Runs any tool in `aidb.tools` by name, whether native, SQL, or MCP, and returns its result.",
+       "docs": "reference/tools/#aidbrun_tool"
+      }
+     ],
+     "views": [
+      {
+       "name": "aidb.tools",
+       "summary": "The unified, read-only catalog of every tool AIDB knows about — the union of native tools, registered SQL tools, and cached MCP tools.",
+       "docs": "reference/tools/#aidbtools"
+      },
+      {
+       "name": "aidb.sql_tool_registry",
+       "summary": "Backs registered SQL tools. `aidb.tools` is the union view most queries should use instead; query this directly to see a SQL tool's stored query text.",
+       "docs": "reference/tools/#aidbsql_tool_registry"
+      },
+      {
+       "name": "aidb.mcp_registry",
+       "summary": "Registered external MCP servers.",
+       "docs": "reference/tools/#aidbmcp_registry"
+      }
+     ]
+    },
+    {
+     "name": "Parameter helpers",
+     "docs": "reference/tools/",
+     "functions": [
+      {
+       "name": "aidb.tool_param",
+       "summary": "Builds one SQL tool parameter.",
+       "docs": "reference/tools/#aidbtool_param"
+      },
+      {
+       "name": "aidb.tool_params",
+       "summary": "Combines one or more `aidb.tool_param()` results, or (called with no arguments) declares an empty parameter list.",
+       "docs": "reference/tools/#aidbtool_params"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Purposes",
+   "docs": "reference/purposes/",
+   "description": "API reference for the purpose registry, the purpose change history, and the governance-related configuration parameters.",
+   "sections": [
+    {
+     "name": "Purpose management functions",
+     "docs": "reference/purposes/",
+     "functions": [
+      {
+       "name": "aidb.create_purpose",
+       "summary": "Creates a purpose.",
+       "docs": "reference/agents/#aidbcreate_purpose"
+      },
+      {
+       "name": "aidb.update_purpose",
+       "summary": "Changes a purpose's role or description.",
+       "docs": "reference/agents/#aidbupdate_purpose"
+      },
+      {
+       "name": "aidb.delete_purpose",
+       "summary": "Deletes a purpose.",
+       "docs": "reference/agents/#aidbdelete_purpose"
+      }
+     ],
+     "views": [
+      {
+       "name": "aidb.purpose_registry",
+       "summary": "Purposes an agent can hold. Each purpose maps a name to the Postgres role that an agent's tool calls run as.",
+       "docs": "reference/agents/#aidbpurpose_registry"
+      }
+     ]
+    },
+    {
+     "name": "Purpose history maintenance functions",
+     "docs": "reference/purposes/",
+     "functions": [
+      {
+       "name": "aidb.prune_purpose_history",
+       "summary": "Deletes the history rows of superseded purpose versions that ended before a cutoff.",
+       "docs": "reference/purposes/#aidbprune_purpose_history"
+      },
+      {
+       "name": "aidb.backfill_purpose_history",
+       "summary": "Adds the missing current-version history row for each purpose restored from a dump taken before AIDB 7.10.0.",
+       "docs": "reference/purposes/#aidbbackfill_purpose_history"
+      }
+     ],
+     "views": [
+      {
+       "name": "aidb.purpose_history",
+       "summary": "Lists every version of every purpose.",
+       "docs": "reference/purposes/#aidbpurpose_history"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Agent memory",
+   "docs": "reference/agent-memory/",
+   "description": "API reference for the aidb_memory functions, catalog views, and configuration parameters.",
+   "sections": [
+    {
+     "name": "Agent memory functions",
+     "docs": "reference/agent-memory/",
+     "functions": [
+      {
+       "name": "aidb_memory.init",
+       "summary": "Initializes a namespace and prepares it to store and retrieve memories.",
+       "docs": "reference/agent-memory/#aidb_memoryinit"
+      },
+      {
+       "name": "aidb_memory.add",
+       "summary": "Persists agent turns as an event so that they can be retrieved later as memory.",
+       "docs": "reference/agent-memory/#aidb_memoryadd"
+      },
+      {
+       "name": "aidb_memory.status",
+       "summary": "Reports the status of a memory event: `ACCEPTED`, `PROCESSING`, `READY`, `SKIPPED`, or `FAILED`.",
+       "docs": "reference/agent-memory/#aidb_memorystatus"
+      },
+      {
+       "name": "aidb_memory.search",
+       "summary": "Searches the stored memories and returns the entries that match a natural-language query.",
+       "docs": "reference/agent-memory/#aidb_memorysearch"
+      },
+      {
+       "name": "aidb_memory.list_memories",
+       "summary": "Lists the memories stored in agent memory.",
+       "docs": "reference/agent-memory/#aidb_memorylist_memories"
+      },
+      {
+       "name": "aidb_memory.delete",
+       "summary": "Removes memories when they must be deleted for compliance, privacy, or retention reasons.",
+       "docs": "reference/agent-memory/#aidb_memorydelete"
+      },
+      {
+       "name": "aidb_memory.session_start",
+       "summary": "Opens a conversation, or resumes one, and returns the handoff left by the previous conversation in the same scope.",
+       "docs": "reference/agent-memory/#aidb_memorysession_start"
+      },
+      {
+       "name": "aidb_memory.session_get",
+       "summary": "Returns a conversation's history in order, within an optional character budget.",
+       "docs": "reference/agent-memory/#aidb_memorysession_get"
+      },
+      {
+       "name": "aidb_memory.session_end",
+       "summary": "Closes a conversation and stores a handoff that describes it.",
+       "docs": "reference/agent-memory/#aidb_memorysession_end"
+      }
+     ],
+     "views": [
+      {
+       "name": "aidb_memory.namespaces",
+       "summary": "Lists the available agent memory namespaces.",
+       "docs": "reference/agent-memory/#aidb_memorynamespaces"
+      },
+      {
+       "name": "aidb_memory.events",
+       "summary": "Lists the ingestion events created when applications call `aidb_memory.add`.",
+       "docs": "reference/agent-memory/#aidb_memoryevents"
+      },
+      {
+       "name": "aidb_memory.messages",
+       "summary": "Stores the ordered message history generated from memory events, including the actor and session context, role, content, and timestamps.",
+       "docs": "reference/agent-memory/#aidb_memorymessages"
+      },
+      {
+       "name": "aidb_memory.sessions",
+       "summary": "One row per conversation, created lazily by `session_start`, `session_end`, or a compacting `session_get`.",
+       "docs": "reference/agent-memory/#aidb_memorysessions"
+      },
+      {
+       "name": "aidb_memory.session_compactions",
+       "summary": "Summaries that stand in for the turns a session has compacted, ordered per session by `seq`.",
+       "docs": "reference/agent-memory/#aidb_memorysession_compactions"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Observability",
+   "docs": "reference/observability/",
+   "description": "Reference for AIDB's built-in OpenTelemetry tracing: the aidb_otel schema, who can read it, storage format, functions, background workers, and every attribute AIDB emits.",
+   "sections": [
+    {
+     "name": "Retention cleanup",
+     "docs": "reference/observability/",
+     "functions": [
+      {
+       "name": "aidb.run_otel_retention_cleanup",
+       "summary": "Manually triggers a full retention cleanup pass, deleting rows older than `aidb.otel_cleaner_retention_days` from all three `aidb_otel` tables, in the same bounded batches the cleaner background worker uses.",
+       "docs": "reference/observability/#aidbrun_otel_retention_cleanup"
+      }
+     ],
+     "views": [
+      {
+       "name": "aidb_otel.traces",
+       "summary": "One row per span, written when aidb.otel_client = 'database'. Governance decisions are spans named purpose_decision.",
+       "docs": "reference/observability/#schemas"
+      },
+      {
+       "name": "aidb_otel.logs",
+       "summary": "One row per log record.",
+       "docs": "reference/observability/#schemas"
+      },
+      {
+       "name": "aidb_otel.metrics",
+       "summary": "One row per batch of metric readings.",
+       "docs": "reference/observability/#schemas"
+      },
+      {
+       "name": "aidb_otel.cleanup_log",
+       "summary": "Who ran each retention cleanup, what it deleted, and why.",
+       "docs": "reference/observability/#auditing-retention-cleanups"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}
