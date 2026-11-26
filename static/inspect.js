@@ -291,10 +291,9 @@ function inspectFunctions(){
         <tbody>${s.functions.map(row).join('')}</tbody></table></div>${views(s)}</div>`).join('')}</section>`).join('');
     const total=insDocFns(doc).length,totalV=insDocViews(doc).length;
     return {html:`<div class="toolbar"><input type="search" id="ins-q" placeholder="Search ${total} functions and ${totalV} views" autocomplete="off" style="min-width:260px">
-      <div class="seg" id="fn-g"><button data-g="" aria-pressed="true">All</button>${doc.groups.map((g,i)=>`<button data-g="${i}" aria-pressed="false">${esc(g.name)}</button>`).join('')}</div>
+      <nav class="seg" id="fn-g" aria-label="Jump to an area">${doc.groups.map((g,i)=>`<button data-g="${i}">${esc(g.name)}</button>`).join('')}</nav>
       <button class="btn alt" id="ins-refresh">Refresh</button></div><p id="fn-more" style="color:var(--muted)"></p>${groups}`,
       after:b=>{
-        let g='';
         const draw=()=>{
           const q=b.querySelector('#ins-q').value.toLowerCase();let n=0,nv=0;
           b.querySelectorAll('section.fng').forEach(sec=>{
@@ -306,13 +305,16 @@ function inspectFunctions(){
               box.querySelector('.fnt').hidden=!hits;const vb=box.querySelector('.fnvb');if(vb)vb.hidden=!vhits;
               box.hidden=!(hits+vhits);secFn+=hits;secV+=vhits;
             });
-            sec.hidden=!(secFn+secV)||(g!==''&&sec.dataset.g!==g);
+            sec.hidden=!(secFn+secV);
             if(!sec.hidden){n+=secFn;nv+=secV;}
           });
           b.querySelector('#fn-more').textContent=n+nv?`${n} function${n===1?'':'s'}, ${nv} ${nv===1?'view or table':'views and tables'}`:'Nothing matches.';
         };
         b.querySelector('#ins-q').oninput=draw;
-        b.querySelectorAll('#fn-g button').forEach(x=>x.onclick=()=>{g=x.dataset.g;b.querySelectorAll('#fn-g button').forEach(y=>y.setAttribute('aria-pressed',y===x));draw();});
+        b.querySelectorAll('#fn-g button').forEach(x=>x.onclick=()=>{   // jump to the area; clear the search if it hides it
+          const sec=b.querySelector(`section.fng[data-g="${x.dataset.g}"]`);
+          if(sec.hidden){b.querySelector('#ins-q').value='';draw();}
+          sec.scrollIntoView({behavior:'smooth',block:'start'});});
         b.querySelectorAll('tr.fnr').forEach(tr=>{const tog=async e=>{
           if(e.target.closest('a'))return;
           const x=tr.nextElementSibling;x.hidden=!x.hidden;if(x.hidden)return;
