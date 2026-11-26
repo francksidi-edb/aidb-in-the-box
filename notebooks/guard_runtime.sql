@@ -117,8 +117,32 @@ CREATE TRIGGER events_append_only BEFORE UPDATE OR DELETE ON guard.events FOR EA
 DROP TRIGGER IF EXISTS events_no_truncate ON guard.events;
 CREATE TRIGGER events_no_truncate BEFORE TRUNCATE ON guard.events FOR EACH STATEMENT EXECUTE FUNCTION guard.append_only();
 REVOKE ALL ON guard.events FROM PUBLIC;
-GRANT SELECT, INSERT ON guard.events TO aidb_users, aidb_governance;
-GRANT USAGE ON SEQUENCE guard.events_id_seq TO aidb_users, aidb_governance;
+REVOKE INSERT ON guard.events FROM aidb_users, aidb_governance;   -- earlier versions granted it
+REVOKE USAGE ON SEQUENCE guard.events_id_seq FROM aidb_users, aidb_governance;
+GRANT SELECT ON guard.events TO aidb_users, aidb_governance;
+
+-- the only way to write an event: the actor is always the logged-in role, so nobody can log in someone else's name,
+-- and only the governance team can resolve an approval
+CREATE OR REPLACE FUNCTION guard.log_event(
+  p_decision text, p_agent text DEFAULT NULL, p_model text DEFAULT NULL, p_model_version text DEFAULT NULL,
+  p_prompt text DEFAULT NULL, p_prompt_sent text DEFAULT NULL, p_policy text DEFAULT NULL,
+  p_intent_score numeric DEFAULT NULL, p_pii_found text[] DEFAULT NULL, p_guardrails_on boolean DEFAULT NULL,
+  p_conversation_id text DEFAULT NULL, p_reply text DEFAULT NULL, p_sources jsonb DEFAULT NULL, p_detail jsonb DEFAULT NULL)
+RETURNS bigint LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $$
+DECLARE v_id bigint;
+BEGIN
+  IF p_decision IN ('approved', 'rejected') AND NOT pg_has_role(session_user, 'aidb_governance', 'MEMBER') THEN
+    RAISE EXCEPTION 'only members of aidb_governance can log the decision %', p_decision;
+  END IF;
+  INSERT INTO guard.events (actor, agent, model, model_version, prompt, prompt_sent, decision, policy, intent_score,
+                            pii_found, guardrails_on, conversation_id, reply, sources, detail)
+  VALUES (session_user, p_agent, p_model, p_model_version, p_prompt, p_prompt_sent, p_decision, p_policy, p_intent_score,
+          p_pii_found, p_guardrails_on, p_conversation_id, p_reply, p_sources, p_detail)
+  RETURNING id INTO v_id;
+  RETURN v_id;
+END $$;
+REVOKE ALL ON FUNCTION guard.log_event FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION guard.log_event TO aidb_users, aidb_governance;
 
 -- who, what prompt, which model, which data, which policy, what decision (C-31)
 CREATE OR REPLACE VIEW guard.audit AS

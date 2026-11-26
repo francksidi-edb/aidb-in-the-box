@@ -317,10 +317,11 @@ def _model_info(agent):
 
 
 def log_event(role="demo_user", **ev):
+    """Write an event through guard.log_event(), which records the logged-in role as the actor."""
     cols = ["agent", "model", "model_version", "prompt", "prompt_sent", "decision", "policy", "intent_score",
             "pii_found", "guardrails_on", "conversation_id", "reply", "sources", "detail"]
     vals = [json.dumps(ev.get(c)) if c in ("sources", "detail") and ev.get(c) is not None else ev.get(c) for c in cols]
-    q = f"INSERT INTO guard.events ({', '.join(cols)}) VALUES ({', '.join(['%s'] * len(cols))}) RETURNING id"
+    q = f"SELECT guard.log_event({', '.join(f'p_{c} => %s' for c in cols)})"
     return scalar(q, vals, role)
 
 
