@@ -69,7 +69,7 @@ The image also includes:
 | `postgres` | the status page (read-only) and Inspect (its SQL console can also write), and the notebooks that need a superuser: Agents - Governance (creates roles), Agents - Budgets and Agents - Semantic KB (AIDB 7.10 lets only a superuser create a semantic knowledge base), the MCP notebook (`ALTER SYSTEM`) and the governance notebooks' setup cells | everything |
 | `demo_user` | Converse, Customs Document Validation and the other Agents notebooks, so the agents, pipelines and tables the apps use belong to it | create and call agents (`aidb_users`), read the audit trail (`aidb_governance`) |
 | `demo_governor` | the governance notebooks' approvals | own purposes, read the audit trail (`aidb_governance`) |
-| `demo_monitor` | Token Boss | see every user's agent activity (through the view `monitor_feed.action_log`, which `postgres` owns), change `demo_user`'s agents (member of `demo_user`), create the `monitor` schema |
+| `demo_monitor` | Token Boss | see every user's agent activity (through the `monitor_feed` functions, which run as `postgres`: see `roles.sql`), change `demo_user`'s agents (member of `demo_user`), create the `monitor` schema |
 
 AIDB lets only the owner role of an agent, pipeline or tool change or delete it. On a volume created before the apps switched to `demo_user`, the objects the notebooks created as `postgres` still belong to `postgres`: run those notebooks again after `./rebuild.sh`, or the apps cannot change them. Converse lists only the agents of roles its user belongs to. The same goes for Token Boss: its model, tools and agents from before belong to `postgres`, so they need `./rebuild.sh` and the Setup tab again.
 

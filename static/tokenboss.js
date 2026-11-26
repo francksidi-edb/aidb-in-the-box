@@ -23,14 +23,13 @@ AU.mounts.tokenboss=async el=>{
       ${s.conn_error?AU.err('Cannot reach the database: '+s.conn_error):''}`;
   }
   const tab=()=>({agents,performance,history,setup}[TB.tab])();
-  const notReady=()=>AU.msg('info','The monitor is not ready yet. Run the steps on the Setup tab, and check that the database user can read monitor_feed.action_log and aidb_otel.traces (docker/roles.sql).');
+  const notReady=()=>AU.msg('info','The monitor is not ready yet. Run the steps on the Setup tab, and check that the database user may call the monitor_feed functions (docker/roles.sql).');
 
   /* A warning when some token counts are estimates: for how many tasks, and which data AIDB was missing. */
   function tokenWarn(t){
     if(!t||!t.estimated)return '';
     const why=t.reasons.map(r=>`${esc(r.note)} (${r.tasks} task${r.tasks===1?'':'s'})`).join('; ');
-    const otel=!t.traces_readable?` Token Boss's database user cannot read <code>aidb_otel.traces</code>, where AIDB stores the reported counts: grant it <code>aidb_governance</code> (see docker/roles.sql), then run step 2 on the Setup tab again.`
-      :t.otel_client!=='database'?` Token Boss's session sees <code>aidb.otel_client</code> = <code>${esc(t.otel_client||'not set')}</code>, so AIDB does not store spans in <code>aidb_otel.traces</code>. Set it to <code>database</code> to get the real counts for new tasks.`
+    const otel=t.otel_client!=='database'?` Token Boss's session sees <code>aidb.otel_client</code> = <code>${esc(t.otel_client||'not set')}</code>, so AIDB does not store spans in <code>aidb_otel.traces</code>. Set it to <code>database</code> to get the real counts for new tasks.`
       :t.storage_format==='binary'?` <code>aidb.otel_client_storage_format</code> is <code>binary</code>, so the spans have no JSON payload to read the counts from. Set it to <code>json</code> to get the real counts for new tasks.`:'';
     return AU.msg('warn',`${t.estimated===t.tasks?'All':t.estimated+' of'} ${t.tasks} task(s) use estimated token counts (characters ÷ 4), because AIDB has no token usage reported by the model provider for them: ${why}.${otel}`);
   }

@@ -11,7 +11,7 @@ from sqlalchemy import text
 from .common import (api, db_error, db_role, execute, get_engine, query, records, relation_exists, reply,
                      start_job)
 from .tokenboss_sql import *  # noqa: F401,F403  (SQL text and constants)
-from .tokenboss_sql import (AGENT_FILTER, CREATE_VIEW_SQL, TASK_USAGE_SQL, TRACES_READABLE_SQL, DELETED_LABEL, GROUP_TITLES, HIGH_TOKENS_DEFAULT,  # noqa: F401
+from .tokenboss_sql import (AGENT_FILTER, CREATE_VIEW_SQL, VIEWS_COMMENT_SQL, VIEWS_VERSION, script, DELETED_LABEL, GROUP_TITLES, HIGH_TOKENS_DEFAULT,  # noqa: F401
                             MODEL_NAME, MODIFIER_NAME, MODIFY_TOOL_NAMES, REVIEW_TOOL_NAMES, REVIEWER_NAME,
                             REVIEWS_TABLE_SQL, SETUP_MODEL_SQL, SETUP_OBJECT_STATEMENTS, STEP_BY_KEY, STEPS,
                             USED_MODELS_SQL, VIEW_NAMES, fetch_litellm_prices, modifier_prompt, performance_sql,
@@ -34,53 +34,48 @@ def fmt_time(t):
     return pd.Timestamp(t).strftime("%b %d %H:%M")
 
 
-TASK_STATS_STATE_SQL = """SELECT EXISTS (SELECT FROM pg_attribute WHERE attrelid = to_regclass('monitor.task_stats')
-                                                       AND attname = 'token_note' AND NOT attisdropped) AS current,
-                                to_regclass('monitor.task_stats') IS NOT NULL AS present"""
+VIEWS_STATE_SQL = """SELECT obj_description(to_regclass('monitor.task_stats'), 'pg_class') AS version,
+                           to_regclass('monitor.task_stats') IS NOT NULL AS present"""
 
 
-def ensure_view_if_needed():
-    """Create monitor.task_stats if it does not exist, and the setup objects again if it is from an older Token Boss
-    (no token_note column): those views show only estimated tokens, and from before monitor_feed (docker/roles.sql)
-    they read aidb_internal.action_log, which shows Token Boss only its own actions. Otherwise it is never replaced.
-    An advisory lock keeps the first requests after an upgrade from creating the views at the same time."""
-    if query(TASK_STATS_STATE_SQL).iloc[0]["current"]:
-        return
+def create_objects(always=False):
+    """Create Token Boss's schema, tables and views (setup step 2), or with always=False only when monitor.task_stats is
+    missing or from another Token Boss version (VIEWS_VERSION): older views show only estimated tokens or, from before
+    monitor_feed (docker/roles.sql), only Token Boss's own actions. Without task_stats only it is created. One
+    transaction, under an advisory lock, so the first requests after an upgrade do not replace the views at once."""
     with get_engine().connect() as c:
         c.execute(text("SELECT pg_advisory_lock(hashtext('tokenboss-views'))"))
         try:
-            state = c.execute(text(TASK_STATS_STATE_SQL)).mappings().first()
-            if state["current"]:
+            state = c.execute(text(VIEWS_STATE_SQL)).mappings().first()
+            if not always and state["version"] == VIEWS_VERSION:
                 return
-            if state["present"]:
-                statements = SETUP_OBJECT_STATEMENTS
-            else:
-                statements = ["CREATE SCHEMA IF NOT EXISTS monitor", TASK_USAGE_SQL, CREATE_VIEW_SQL]
-            for s in statements:
-                c.execute(text(s))
+            statements = (SETUP_OBJECT_STATEMENTS if always or state["present"]
+                          else ["CREATE SCHEMA IF NOT EXISTS monitor", CREATE_VIEW_SQL, VIEWS_COMMENT_SQL])
+            c.execute(text(script(statements)))  # one query string: one transaction
         finally:
             c.execute(text("SELECT pg_advisory_unlock(hashtext('tokenboss-views'))"))
+
+
+def ensure_view_if_needed():
+    if query(VIEWS_STATE_SQL).iloc[0]["version"] != VIEWS_VERSION:
+        create_objects()
 
 
 def monitor_state():
     """(ready, connection ok, connection error). Ready = the log, agents table and task view exist."""
     try:
         ensure_view_if_needed()
-        return all(relation_exists(n) for n in ("monitor_feed.action_log", "aidb.agents", "monitor.task_stats")), True, None
+        feed = query("SELECT to_regprocedure('monitor_feed.action_log()') IS NOT NULL AS ok").iloc[0]["ok"]
+        return bool(feed) and all(relation_exists(n) for n in ("aidb.agents", "monitor.task_stats")), True, None
     except Exception as e:  # noqa: BLE001
         return False, False, db_error(e)
 
 
 # ---------------------------------------------------------------- setup helpers
-def run_statements(statements):
-    for s in statements:
-        execute(s)
-
-
-def names_present(sql, names):
+def names_present(sql, names, params=None):
     """Which of `names` the status query finds; empty if the query cannot run (missing table)."""
     try:
-        return set(query(sql, {"n": names}).iloc[:, 0])
+        return set(query(sql, {"n": names, **(params or {})}).iloc[:, 0])
     except Exception:  # noqa: BLE001
         return set()
 
@@ -96,8 +91,10 @@ def present_now():
     return {
         "model": names_present("SELECT name FROM aidb.models WHERE name = ANY(:n)", [MODEL_NAME]),
         "objects": {n for n in VIEW_NAMES if safe_relation_exists(n)},
-        "tools": names_present("SELECT name FROM aidb.sql_tool_registry WHERE name = ANY(:n)",
-                               REVIEW_TOOL_NAMES + MODIFY_TOOL_NAMES),
+        # modify tools from an older Token Boss wrote aidb.agents directly: they count as missing until step 4 runs
+        "tools": names_present("SELECT name FROM aidb.sql_tool_registry WHERE name = ANY(:n) "
+                               "AND (NOT name = ANY(:m) OR query_text LIKE '%aidb.update_agent%')",
+                               REVIEW_TOOL_NAMES + MODIFY_TOOL_NAMES, {"m": ["apply_agent_change", "revert_agent"]}),
         "agents": names_present("SELECT name FROM aidb.agents WHERE name = ANY(:n)", [REVIEWER_NAME, MODIFIER_NAME]),
     }
 
@@ -110,7 +107,7 @@ def run_step_sql(step, api_key=None):
     if step["key"] == "model":
         execute(SETUP_MODEL_SQL, {"creds": json.dumps({"api_key": api_key})})
     elif step["key"] == "objects":
-        run_statements(SETUP_OBJECT_STATEMENTS)
+        create_objects(always=True)
     else:
         execute(step["sql"])
 
@@ -192,11 +189,10 @@ def token_estimates(source, where, params=None):
     est = df[df["token_note"].notna()]
     # What Token Boss's own session sees: why AIDB may not be storing spans it can read
     telemetry = query("""SELECT current_setting('aidb.otel_client', true) AS otel_client,
-                                current_setting('aidb.otel_client_storage_format', true) AS storage_format,
-                                """ + TRACES_READABLE_SQL + """ AS traces_readable""")
+                                current_setting('aidb.otel_client_storage_format', true) AS storage_format""")
     return {"tasks": int(df["tasks"].sum()), "estimated": int(est["tasks"].sum()),
             "reasons": [{"note": r.token_note, "tasks": int(r.tasks)} for r in est.itertuples()],
-            **{k: (bool(v) if k == "traces_readable" else v) for k, v in telemetry.iloc[0].items()}}
+            **telemetry.iloc[0].to_dict()}
 
 
 # ---------------------------------------------------------------- scorecard
@@ -292,8 +288,12 @@ def apply():
     if MODIFIER_NAME not in names_present("SELECT name FROM aidb.agents WHERE name = ANY(:n)", [MODIFIER_NAME]):
         return reply({"ok": False, "error": f"The modifier agent {MODIFIER_NAME} does not exist yet."})
     # One modifier run per agent at a time: its edits are computed from the instructions it read
-    return reply({"ok": True, "job": start_job(apply_job, b["agent"], b["text"], b.get("original") or b["text"],
-                                               key=f"tokenboss-apply:{b['agent']}").id})
+    args = (b["agent"], b["text"], b.get("original") or b["text"])
+    job = start_job(apply_job, *args, key=f"tokenboss-apply:{b['agent']}")
+    if job.args != args:
+        return reply({"ok": False, "error": f"Another recommendation for {b['agent']} is still being applied. "
+                                            "Try again when it has finished."})
+    return reply({"ok": True, "job": job.id})
 
 
 # ---------------------------------------------------------------- performance
@@ -304,7 +304,7 @@ def performance():
     if not ready:
         return reply({"ok": True, "ready": False})
     include_single = request.args.get("include_single") == "1"
-    costs_ok = relation_exists("monitor.model_prices") and relation_exists("monitor.model_ids")
+    costs_ok = relation_exists("monitor.model_prices")
     try:
         perf = query(performance_sql(costs_ok))
     except Exception as e:  # noqa: BLE001
@@ -536,7 +536,7 @@ def price_state():
 @bp.get("/prices")
 @api
 def prices():
-    if not (safe_relation_exists("monitor.model_prices") and safe_relation_exists("monitor.model_ids")):
+    if not safe_relation_exists("monitor.model_prices"):
         return reply({"ok": True, "available": False})
     p, used, unpriced = price_state()
     return reply({"ok": True, "available": True, "rows": records(p), "used": used, "unpriced": unpriced})

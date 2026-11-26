@@ -118,8 +118,9 @@ def api(fn):
 
 # ---- background jobs: the page starts one, then polls /api/jobs/<id> ----
 class Job:
-    def __init__(self):
+    def __init__(self, args=()):
         self.id = uuid.uuid4().hex[:12]
+        self.args = args       # for a keyed job: what fn was started with, so a caller can tell whether it got its own
         self.lines = []
         self.progress = None   # 0..1 or None
         self.done = False
@@ -143,7 +144,7 @@ def start_job(fn, *args, key=None):
     with _lock:
         if key and key in RUNNING and not RUNNING[key].done:
             return RUNNING[key]
-        job = Job()
+        job = Job(args if key else ())  # unkeyed jobs keep nothing (setup_all_job's argument is an API key)
         for k in [k for k, j in JOBS.items() if j.done and time.time() - j.t1 > 3600]:
             del JOBS[k]
         for k in [k for k, j in RUNNING.items() if j.done]:
