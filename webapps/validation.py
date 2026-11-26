@@ -209,7 +209,7 @@ def process_job(job, redo):
 
 @bp.post("/process")
 def process():
-    job = start_job(process_job, bool(request.get_json().get("redo")))
+    job = start_job(process_job, bool(request.get_json().get("redo")), key="validation-process")
     return reply({"ok": True, "job": job.id})
 
 
