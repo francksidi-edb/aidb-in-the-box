@@ -10,8 +10,4 @@ psycopg==3.3.9
 SQLAlchemy==2.1.9
 jupysql==0.11.1
 datasets==5.2.0
-matplotlib==3.11.2
-pypmml==1.5.8
-geopandas==1.2.0
-seaborn==0.13.2
-ipywidgets==8.1.9
+ipywidgets==8.1.9   # progress bars in Jupyter, for example of datasets.load_dataset

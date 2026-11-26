@@ -22,8 +22,6 @@ RUN --mount=type=secret,id=edb_token \
 ENV PATH="/usr/pgsql-18/bin:${PATH}" \
     PGDATA=/var/lib/pgsql/18/data
 
-RUN dnf install -y gcc-c++ java-17-openjdk-devel ant && dnf clean all
-
 USER postgres
 WORKDIR /var/lib/pgsql
 
