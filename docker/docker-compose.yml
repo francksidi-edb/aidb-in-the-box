@@ -8,6 +8,8 @@ services:
     image: aidb-in-the-box
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      AIBOX_ALLOWED_HOSTS: ${AIBOX_ALLOWED_HOSTS:-}   # extra host names for the app besides localhost / 127.0.0.1
+      JUPYTER_TOKEN: ${JUPYTER_TOKEN:-}               # empty: a new Jupyter token on every start
     ports:
       - "127.0.0.1:5432:5432"   # Postgres
       - "127.0.0.1:8888:8888"   # Jupyter

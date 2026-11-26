@@ -29,7 +29,7 @@ The build uploads the repo root to Docker (`context: ..` in `docker-compose.yml`
 | What | How |
 | :-- | :-- |
 | AI in the Box (Flask app) | http://localhost:8650 |
-| Jupyter Notebook | http://localhost:8888 |
+| Jupyter Notebook | under **Run it** in the app (http://localhost:8888; the app adds the token to its links) |
 | MCP endpoint (used by the MCP notebook) | `localhost:8765` |
 | psql from your laptop | `psql -h localhost -U postgres -d aidb` |
 | psql inside the container | `docker compose exec pg psql -d aidb` |
@@ -52,7 +52,7 @@ On the **first start** (an empty data volume), `entrypoint.sh`:
 2. Creates the database `aidb`.
 3. Runs `bootstrap.sql`: the extensions (`aidb`, `pgfs`, `vector`, `pg_tokenizer`, `vchord_bm25`), the roles `demo_user` and `demo_governor` (password `demo`), the sample "Orbit Cloud support desk" tables some notebooks use, and the AIDB egress allowlist (it adds `api.anthropic.com` and the Hugging Face hosts to the existing list and never replaces it).
 
-On **every start** it updates the extensions, starts Jupyter Notebook (port 8888, no token) from `/var/lib/pgsql`, and starts the AI in the Box app (port 8650), connected to `aidb` as `postgres`. The apps are part of that same app and use the same connection, so they need no extra ports or processes.
+On **every start** it updates the extensions, starts Jupyter Notebook (port 8888, with a new token on every start unless you set `JUPYTER_TOKEN` in `docker/.env`) from `/var/lib/pgsql`, and starts the AI in the Box app (port 8650), connected to `aidb` as `postgres`. The apps are part of that same app and use the same connection, so they need no extra ports or processes.
 
 The image also includes:
 
@@ -74,5 +74,6 @@ After you change a notebook, the app or the Dockerfile in the repo, run `./start
 | Build fails with 401 or 403 | The token is wrong or expired. Get a new Repos 2.0 token. |
 | The pill says "Database not connected" | The first start can take a minute or two. Check `docker compose logs pg`. |
 | Port 5432, 8650 or 8888 already in use | Stop the other program, or change the left side of the port in `docker-compose.yml`. |
+| The app answers `Forbidden host.` | It only serves `localhost` and `127.0.0.1`, so a web page that rebinds its DNS name cannot reach it. To open it under another name (a tunnel or an SSH port forward), set `AIBOX_ALLOWED_HOSTS=name1,name2` in `docker/.env`. |
 | An app says it cannot reach the database | Check `docker compose exec pg cat /var/lib/pgsql/aibox.log`. |
 | Agent calls fail with an `egress` error | The host is not on AIDB's egress allowlist. Add it with `ALTER SYSTEM SET aidb.egress_allowlist = '...'` and `SELECT pg_reload_conf();`. |

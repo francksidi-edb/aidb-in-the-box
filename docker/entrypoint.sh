@@ -32,12 +32,11 @@ for ext in vector pgfs aidb; do
     END \$\$;" || echo "WARN: ALTER EXTENSION $ext UPDATE failed"
 done
 
-# Jupyter in the background, started in the postgres home directory where the notebooks are (no token: demo only,
-# bound to localhost on the host).
+# Jupyter in the background, started in the postgres home directory where the notebooks are. Jupyter reads its token
+# from JUPYTER_TOKEN (a new one on every start unless set in .env); the app passes it to its "Open in Jupyter" links.
+export JUPYTER_TOKEN="${JUPYTER_TOKEN:-$(python3 -c 'import secrets; print(secrets.token_urlsafe(24))')}"
 cd /var/lib/pgsql
-~/jupyter_env/bin/jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser \
-  --IdentityProvider.token='' --IdentityProvider.password_required=False \
-  > ~/jupyter.log 2>&1 &
+~/jupyter_env/bin/jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser > ~/jupyter.log 2>&1 &
 JUPYTER_PID=$!
 
 # AI in the Box (Flask) in the background, connected to the aidb database. No sign-in: demo only.

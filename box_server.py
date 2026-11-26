@@ -8,7 +8,8 @@ SQLAlchemy, both with the usual PGHOST / PGPORT / PGDATABASE / PGUSER / PGPASSWO
 
 Binds to 127.0.0.1 only by default. In the container it listens on all addresses (AIBOX_HOST=0.0.0.0) with
 no password (AIBOX_NO_AUTH=1) and docker-compose.yml publishes the port on localhost only. Otherwise set
-AIBOX_PASSWORD (user "aibox") to require a sign-in.
+AIBOX_PASSWORD (user "aibox") to require a sign-in. Without a password only requests for localhost / 127.0.0.1
+(plus AIBOX_ALLOWED_HOSTS, comma-separated) are served, so a DNS-rebinding page cannot reach the app.
 """
 import base64
 import glob
@@ -34,12 +35,13 @@ app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
 app.config["MAX_CONTENT_LENGTH"] = 200 * 1024 * 1024   # PDF uploads for Customs Document Validation
 
 
-LOCAL = ("127.0.0.1", "localhost")
+LOCAL = ("127.0.0.1", "localhost", "::1")
 HOST = os.environ.get("AIBOX_HOST", "127.0.0.1")
 EXPOSED = HOST not in ("127.0.0.1", "localhost", "::1")
 NO_AUTH = os.environ.get("AIBOX_NO_AUTH", "") not in ("", "0")   # testing only: network mode without a password
 AUTH_ON = EXPOSED and not NO_AUTH
 PASSWORD = os.environ.get("AIBOX_PASSWORD", "") or (secrets.token_urlsafe(12) if AUTH_ON else "")
+ALLOWED_HOSTS = set(LOCAL) | {h.strip().lower() for h in os.environ.get("AIBOX_ALLOWED_HOSTS", "").split(",") if h.strip()}
 
 
 def basic_ok():
@@ -53,15 +55,23 @@ def basic_ok():
     return hmac.compare_digest(user, "aibox") and hmac.compare_digest(pw, PASSWORD)
 
 
-@app.before_request
-def only_local():
-    host = (request.host or "").split(":")[0]
+def access_denied():
+    """The sign-in or host check shared with the Introspector mount. Returns an error response, or None."""
     if AUTH_ON:
-        # Network mode: a password replaces the loopback-only rule (this app can install software and save database passwords).
+        # Network mode: a password replaces the host rule (this app can install software and save database passwords).
         if not basic_ok():
             return Response("Sign in with user aibox.", 401, {"WWW-Authenticate": 'Basic realm="AI in the Box"'})
-    elif not EXPOSED and host not in LOCAL:
+    elif urllib.parse.urlsplit("//" + (request.host or "")).hostname not in ALLOWED_HOSTS:
+        # No password (also with AIBOX_NO_AUTH): only known host names, so DNS rebinding cannot reach this server.
         return jsonify({"ok": False, "error": "Forbidden host."}), 403
+    return None
+
+
+@app.before_request
+def only_local():
+    denied = access_denied()
+    if denied:
+        return denied
     if request.method == "POST":
         # JSON only (forces a CORS preflight) and same-origin only, so other websites cannot drive this server.
         origin = request.headers.get("Origin")
@@ -115,6 +125,12 @@ def favicon():
 @app.get("/static/<path:name>")
 def static_files(name):
     return send_from_directory(STATIC, name)
+
+
+@app.get("/api/jupyter")
+def jupyter():
+    # The token docker/entrypoint.sh gives Jupyter, for the "Open in Jupyter" links.
+    return jsonify({"token": os.environ.get("JUPYTER_TOKEN", "")})
 
 
 @app.get("/api/status")
@@ -198,11 +214,12 @@ webapps.register(app)
 # The AIDB Introspector lives at /introspect/ (same origin, same password, no extra port).
 from werkzeug.middleware.dispatcher import DispatcherMiddleware  # noqa: E402
 import introspect_mount  # noqa: E402
-app.wsgi_app = DispatcherMiddleware(app.wsgi_app, {"/introspect": introspect_mount.build_app(EXPOSED, PASSWORD, AUTH_ON)})
+app.wsgi_app = DispatcherMiddleware(app.wsgi_app, {"/introspect": introspect_mount.build_app(access_denied)})
 
 if __name__ == "__main__":
     if EXPOSED and NO_AUTH:
-        print("AI in the Box listening on %s:%d with NO PASSWORD (AIBOX_NO_AUTH). Anyone who can reach this port can use it: testing only." % (HOST, PORT))
+        print("AI in the Box listening on %s:%d with NO PASSWORD (AIBOX_NO_AUTH): testing only. Only these host names are "
+              "served (add more with AIBOX_ALLOWED_HOSTS): %s" % (HOST, PORT, ", ".join(sorted(ALLOWED_HOSTS))))
     elif EXPOSED:
         print("AI in the Box listening on %s:%d. Sign in with user: aibox   password: %s" % (HOST, PORT, PASSWORD))
         print("Open the ports in your firewall / EC2 security group, and prefer HTTPS or an SSH tunnel on untrusted networks.")

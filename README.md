@@ -27,7 +27,7 @@ cd docker
 | What | Where |
 | :-- | :-- |
 | AI in the Box (the web app) | http://localhost:8650 |
-| Jupyter Notebook | http://localhost:8888 (also under **Run it** in the app) |
+| Jupyter Notebook | under **Run it** in the app (http://localhost:8888, with a token the app adds to its links) |
 | Postgres | `localhost:5432`, database `aidb`, user `postgres`, password `postgres` |
 
 | Task | Command (from `docker/`) |
