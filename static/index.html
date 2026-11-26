@@ -32,7 +32,7 @@ button,input,select{font:inherit;color:inherit}
 .search input::placeholder{color:var(--mist)}
 .connpill{margin-left:auto;background:var(--bar-soft);border:1px solid var(--bar-line);color:var(--bar-fg);border-radius:999px;padding:4px 14px;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
 .connpill i{width:8px;height:8px;border-radius:50%;background:var(--mist)}
-.connpill.ok i{background:#5FC49C}.connpill.bad i{background:#E58A8A}
+.connpill.ok i{background:#5FC49C}.connpill.bad i{background:#E58A8A}.connpill.warn i{background:#E5C07B}
 .frame{width:100%;height:calc(100vh - 190px);min-height:480px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
 .md h1,.md h2,.md h3{margin:16px 0 6px}.md p{margin:6px 0}.md ul{margin:6px 0;padding-left:20px}.md table{min-width:0;margin:8px 0}.md th,.md td{padding:5px 10px;border:1px solid var(--line)}
 pre.code{position:relative;margin:8px 0;padding:12px 14px;background:var(--frost);border:1px solid var(--line);border-radius:8px;overflow-x:auto;font:12.5px/1.5 var(--f-mono);white-space:pre}
@@ -307,6 +307,9 @@ function statusHtml(s){
    +row(s.connected,'Database connection',s.connected?esc(s.server):esc(s.error||'')+'<br>The container connects with host '+esc(c.PGHOST)+', port '+esc(c.PGPORT)+', database '+esc(c.PGDATABASE)+', user '+esc(c.PGUSER)+'. Check the container log: <code>docker compose logs pg</code>.');
   if(s.connected){
     h+=(s.extensions||[]).map(e=>row(!!e.installed,e.name,e.installed?'Installed, version '+esc(e.installed):(e.available?'Available. Run <code>CREATE EXTENSION '+esc(e.name)+(e.name==='aidb'?' CASCADE':'')+';</code>':'Not included in this image.'))).join('');
+    const v=s.aidb_version;
+    if(v) h+=row(v.compatible,'AIDB version',v.compatible?'Version '+esc(v.installed)+', the version the notebooks and apps were tested with ('+esc(v.tested)+').'
+      :'Version '+esc(v.installed)+' is installed, but the notebooks and apps were tested with '+esc(v.tested)+', so some steps may not work as described. The image installs the latest AIDB release. Once you have tested this one, set <code>AIBOX_TESTED_AIDB_VERSION</code> in <code>docker/.env</code>.');
     h+=row(s.demo_data,'Sample data',s.demo_data?'The Orbit Cloud support desk tables (schema <code>support</code>) are loaded.':'Schema <code>support</code> is missing. It is created by <code>docker/bootstrap.sql</code> on the first start.');
     if(s.aidb_counts) h+=row(true,'AIDB objects',s.aidb_counts.models+' models, '+s.aidb_counts.agents+' agents registered.');
   }
@@ -317,8 +320,10 @@ function connPill(){
   const el=$('#conn'); el.onclick=()=>{location.hash='status'};
   fetch('/api/status').then(r=>r.json()).then(s=>{
     const a=(s.extensions||[]).find(e=>e.name==='aidb');
-    el.className='connpill '+(s.connected&&a&&a.installed?'ok':'bad');
-    el.innerHTML='<i></i>'+(s.connected?(a&&a.installed?'Connected · AIDB '+esc(a.installed):'Connected · AIDB not installed'):'Database not connected');
+    const v=s.aidb_version,untested=v&&!v.compatible;
+    el.className='connpill '+(s.connected&&a&&a.installed?(untested?'warn':'ok'):'bad');
+    el.title=untested?'AIDB '+v.installed+' is not the tested version ('+v.tested+'). Open the system check for details.':'';
+    el.innerHTML='<i></i>'+(s.connected?(a&&a.installed?'Connected · AIDB '+esc(a.installed)+(untested?' (untested)':''):'Connected · AIDB not installed'):'Database not connected');
   }).catch(()=>{el.className='connpill bad';el.innerHTML='<i></i>Server not reachable'});
 }
 /* One of the demo apps. The pages are built by AppsUI.mount (apps.js, tokenboss.js). */

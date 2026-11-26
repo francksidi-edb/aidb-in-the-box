@@ -2,7 +2,8 @@
 FROM rockylinux:9
 
 # EDB repo + Postgres 18 + extensions + Python. The token is a build secret,
-# so it never ends up in an image layer.
+# so it never ends up in an image layer. AIDB (edb-pg18-aidb) is not pinned: the app's status page warns when the
+# installed version differs from the one the demos were tested with (AIBOX_TESTED_AIDB_VERSION in box_server.py).
 RUN --mount=type=secret,id=edb_token \
     export EDB_SUBSCRIPTION_TOKEN="$(cat /run/secrets/edb_token)" \
            EDB_SUBSCRIPTION_PLAN=enterprise \
@@ -26,12 +27,10 @@ RUN dnf install -y gcc-c++ java-17-openjdk-devel ant && dnf clean all
 USER postgres
 WORKDIR /var/lib/pgsql
 
-# Python environment: the AI in the Box Flask app (with the demo apps) and Jupyter Notebook.
+# Python environment: the AI in the Box Flask app (with the demo apps) and Jupyter Notebook, at pinned versions.
+COPY --chown=postgres:postgres docker/requirements.txt docker/constraints.txt /tmp/pip/
 RUN python3.12 -m venv ~/jupyter_env && \
-    ~/jupyter_env/bin/pip install --no-cache-dir --upgrade pip && \
-    ~/jupyter_env/bin/pip install --no-cache-dir flask waitress notebook pandas psycopg2-binary \
-        matplotlib pypmml geopandas sqlalchemy seaborn jupysql psycopg \
-        datasets ipywidgets
+    ~/jupyter_env/bin/pip install --no-cache-dir -r /tmp/pip/requirements.txt -c /tmp/pip/constraints.txt
 
 # The app: Flask server, the demo apps (webapps), the AIDB Introspector and the notebooks.
 WORKDIR /var/lib/pgsql/app

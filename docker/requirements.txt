@@ -1,0 +1,17 @@
+# The Python packages of the image's environment (the AI in the Box app and Jupyter Notebook), pinned to the versions
+# last tested. docker/constraints.txt pins their dependencies. Change a version on purpose, then rebuild and test.
+pip==26.3
+Flask==3.1.3
+waitress==3.0.2
+notebook==7.6.5
+pandas==3.1.1
+psycopg2-binary==2.9.13
+psycopg==3.3.9
+SQLAlchemy==2.1.9
+jupysql==0.11.1
+datasets==5.2.0
+matplotlib==3.11.2
+pypmml==1.5.8
+geopandas==1.2.0
+seaborn==0.13.2
+ipywidgets==8.1.9

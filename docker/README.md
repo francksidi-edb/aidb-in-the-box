@@ -61,6 +61,9 @@ The image also includes:
 - the notebooks, copied to `/var/lib/pgsql` (where Jupyter starts);
 - the sample documents, copied to `/tmp/pgfs/` (the `pgfs` volume);
 - the app in `/var/lib/pgsql/app`: `box_server.py`, the `webapps/` backends for the apps, `static/` and the Introspector.
+- the Python packages for the app and Jupyter, at the versions in `requirements.txt` (and their dependencies at the versions in `constraints.txt`), so a rebuild does not pick up new releases by surprise.
+
+AIDB itself is not pinned: a rebuild installs the latest `edb-pg18-aidb`. The notebooks and apps were tested with AIDB 7.10. When the installed major or minor version differs, the system check shows a warning and the pill says "untested". After testing a new release, set `AIBOX_TESTED_AIDB_VERSION` (for example `7.11.0`) in `docker/.env`, or change the default in `box_server.py`.
 
 ## Database users
 
@@ -88,5 +91,6 @@ After you change a notebook, the app or the Dockerfile in the repo, run `./start
 | The pill says "Database not connected" | The first start can take a minute or two. Check `docker compose logs pg`. |
 | Port 5432, 8650 or 8888 already in use | Stop the other program, or change the left side of the port in `docker-compose.yml`. |
 | The app answers `Forbidden host.` | It only serves `localhost` and `127.0.0.1`, so a web page that rebinds its DNS name cannot reach it. To open it under another name (a tunnel or an SSH port forward), set `AIBOX_ALLOWED_HOSTS=name1,name2` in `docker/.env`. |
+| The pill says "(untested)" | The installed AIDB release is not the one the demos were tested with (see [What the container sets up](#what-the-container-sets-up)). Most demos still work; check the system check for the versions. |
 | An app says it cannot reach the database | Check `docker compose exec pg cat /var/lib/pgsql/aibox.log`. |
 | Agent calls fail with an `egress` error | The host is not on AIDB's egress allowlist. Add it with `ALTER SYSTEM SET aidb.egress_allowlist = '...'` and `SELECT pg_reload_conf();`. |
