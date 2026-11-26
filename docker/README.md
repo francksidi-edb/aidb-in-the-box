@@ -17,7 +17,7 @@ One container (Rocky Linux 9) that runs EDB Postgres 18 with AIDB, PGFS and Vect
 | Script | What it does |
 | :-- | :-- |
 | `./start.sh` | Asks for the token if `EDB_TOKEN` is not set, builds the image if needed (`docker compose up -d --build`), starts the container and opens the app. |
-| `./stop.sh` | `docker compose down`: removes the container and keeps the database volume. Run `./start.sh` to bring it back. |
+| `./stop.sh` | `docker compose down`: removes the container and keeps the database and document volumes. Run `./start.sh` to bring it back. |
 | `./rebuild.sh` | `docker compose down --volumes`, then a build with no cache and a fresh start. **Deletes the database.** |
 
 The token is passed as a BuildKit secret and is not stored in the image. It is only needed when building.
@@ -59,12 +59,12 @@ On **every start** it updates the extensions, starts Jupyter Notebook (port 8888
 The image also includes:
 
 - the notebooks, copied to `/var/lib/pgsql` (where Jupyter starts);
-- the sample documents, copied to `/tmp/pgfs/`;
+- the sample documents, copied to `/tmp/pgfs/` (the `pgfs` volume);
 - the app in `/var/lib/pgsql/app`: `box_server.py`, the `webapps/` backends for the apps, `static/` and the Introspector.
 
 ## Data
 
-The database lives in the Docker volume `pgdata` (`/var/lib/pgsql/18/data`). `./stop.sh` and `docker compose stop` keep it. `./rebuild.sh` and `docker compose down -v` delete it. Because the first-start setup only runs on an empty volume, changes to `entrypoint.sh` or `bootstrap.sql` need `./rebuild.sh` to take effect.
+The database lives in the Docker volume `pgdata` (`/var/lib/pgsql/18/data`), and the documents pgfs reads (the sample PDFs, the PDFs you upload in Customs Document Validation and the PDFs the RAG notebook downloads) in the volume `pgfs` (`/tmp/pgfs`). Files outside these two folders, such as the MCP notebook's `/var/lib/pgsql/pgfs`, are lost when the container is removed. `./stop.sh` and `docker compose stop` keep both. `./rebuild.sh` and `docker compose down -v` delete both. The `pgfs` volume is filled with the image's sample documents when it is created, so sample documents added to the repo later appear only after `./rebuild.sh`. Because the first-start setup only runs on an empty volume, changes to `entrypoint.sh` or `bootstrap.sql` need `./rebuild.sh` to take effect.
 
 After you change a notebook, the app or the Dockerfile in the repo, run `./start.sh` (or `docker compose up -d --build`) to refresh the image. Edits you make inside Jupyter are not saved back to the repo.
 
