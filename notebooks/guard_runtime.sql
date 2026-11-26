@@ -79,13 +79,15 @@ LANGUAGE sql STABLE AS $$
 $$;
 
 -- ── PII (C-36) ────────────────────────────────────────────────────────────────
+-- phone: international (+31 6 12345678), national with a leading 0 (020 7946 0958) or North American (415-555-0100),
+-- so dates and IDs such as 2026-11-26 or INV-2026-10428 are not taken for phone numbers
 CREATE OR REPLACE FUNCTION guard.pii_types(t text) RETURNS text[] LANGUAGE sql IMMUTABLE AS $$
   SELECT coalesce(array_remove(ARRAY[
     CASE WHEN t ~* '[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}' THEN 'email' END,
     CASE WHEN t ~ '\m\d{3}-\d{2}-\d{4}\M' THEN 'ssn' END,
     CASE WHEN t ~ '\m(?:\d[ -]?){13,16}\M' THEN 'card' END,
     CASE WHEN regexp_replace(regexp_replace(t, '\m(?:\d[ -]?){13,16}\M', '', 'g'), '\m\d{3}-\d{2}-\d{4}\M', '', 'g')
-              ~ '\+?\d[\d ()-]{7,}\d' THEN 'phone' END], NULL), ARRAY[]::text[])
+              ~ '\+\d[\d ().-]{7,}\d|\(\d{3}\) ?\d{3}[ .-]\d{4}\M|\m\d{3}[ .-]\d{3}[ .-]\d{4}\M|\m0\d([ -]?\d){8,10}\M' THEN 'phone' END], NULL), ARRAY[]::text[])
 $$;
 
 CREATE OR REPLACE FUNCTION guard.mask_pii(t text) RETURNS text LANGUAGE sql IMMUTABLE AS $$
@@ -95,7 +97,7 @@ CREATE OR REPLACE FUNCTION guard.mask_pii(t text) RETURNS text LANGUAGE sql IMMU
                regexp_replace(t, '[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}', '[EMAIL]', 'gi'),
                '\m\d{3}-\d{2}-\d{4}\M', '[SSN]', 'g'),
              '\m(?:\d[ -]?){13,16}\M', '[CARD]', 'g'),
-           '\+?\d[\d ()-]{7,}\d', '[PHONE]', 'g')
+           '\+\d[\d ().-]{7,}\d|\(\d{3}\) ?\d{3}[ .-]\d{4}\M|\m\d{3}[ .-]\d{3}[ .-]\d{4}\M|\m0\d([ -]?\d){8,10}\M', '[PHONE]', 'g')
 $$;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA guard TO aidb_users, aidb_governance;
 
