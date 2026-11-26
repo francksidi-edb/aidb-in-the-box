@@ -154,7 +154,7 @@ def status():
     available = {r[0] for r in avail} if ok2 else set()
     out["extensions"] = [{"name": w, "installed": installed.get(w),
                           "available": w in available or w in installed} for w in wanted]
-    ok, rows = psql("select to_regnamespace('shop') is not null")
+    ok, rows = psql("select to_regclass('support.tickets') is not null")   # sample data from docker/bootstrap.sql
     out["demo_data"] = bool(ok and rows and rows[0][0] == "t")
     if "aidb" in installed:
         ok, rows = psql("select (select count(*) from aidb.models), (select count(*) from aidb.agents)")

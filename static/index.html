@@ -307,6 +307,7 @@ function statusHtml(s){
    +row(s.connected,'Database connection',s.connected?esc(s.server):esc(s.error||'')+'<br>The container connects with host '+esc(c.PGHOST)+', port '+esc(c.PGPORT)+', database '+esc(c.PGDATABASE)+', user '+esc(c.PGUSER)+'. Check the container log: <code>docker compose logs pg</code>.');
   if(s.connected){
     h+=(s.extensions||[]).map(e=>row(!!e.installed,e.name,e.installed?'Installed, version '+esc(e.installed):(e.available?'Available. Run <code>CREATE EXTENSION '+esc(e.name)+(e.name==='aidb'||e.name==='edb_vectorplus'?' CASCADE':'')+';</code>':'Not included in this image.'))).join('');
+    h+=row(s.demo_data,'Sample data',s.demo_data?'The Orbit Cloud support desk tables (schema <code>support</code>) are loaded.':'Schema <code>support</code> is missing. It is created by <code>docker/bootstrap.sql</code> on the first start.');
     if(s.aidb_counts) h+=row(true,'AIDB objects',s.aidb_counts.models+' models, '+s.aidb_counts.agents+' agents registered.');
   }
   h+=row(true,'Inspect pages','Built in: open Inspect in the menu.');
