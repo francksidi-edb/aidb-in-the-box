@@ -27,7 +27,7 @@ SELECT l.task_id,
                 THEN LENGTH(CAST(l.response_payload AS TEXT))
                 WHEN l.action_type = 'tool_call'
                 THEN LENGTH(CAST(l.request_payload AS TEXT)) ELSE 0 END) / 4 AS est_output_tokens
-FROM aidb_internal.action_log l
+FROM monitor_feed.action_log l
 LEFT JOIN aidb.agents a ON a.id = l.agent_id
 GROUP BY l.task_id, l.conversation_id, l.agent_id, a.name
 """
@@ -268,7 +268,7 @@ FROM (
   FROM (
     SELECT a.name AS agent_name, l.action_type, l.created_at,
            l.response_payload->>'error' AS message
-    FROM aidb_internal.action_log l
+    FROM monitor_feed.action_log l
     JOIN aidb.agents a ON a.id = l.agent_id
     LEFT JOIN monitor.agent_last_change lc ON lc.agent_name = a.name
     WHERE l.status = 'ERROR' AND (lc.changed_at IS NULL OR l.created_at >= lc.changed_at)
@@ -280,7 +280,7 @@ SELECT t.agent_name, l.task_id,
        l.request_payload->>'tool_name' AS tool_name,
        CAST(l.request_payload->'arguments' AS TEXT) AS arguments,
        COUNT(*) AS times
-FROM aidb_internal.action_log l
+FROM monitor_feed.action_log l
 JOIN monitor.recent_task_stats t ON t.task_id = l.task_id
 WHERE l.action_type = 'tool_call' AND t.agent_name IS NOT NULL
 GROUP BY t.agent_name, l.task_id, l.request_payload->>'tool_name', CAST(l.request_payload->'arguments' AS TEXT)
@@ -292,10 +292,10 @@ SELECT a.name AS agent_name,
        SUM(CASE WHEN r.status = 'ERROR' THEN 1 ELSE 0 END) AS errors,
        CAST(AVG(LENGTH(CAST(r.response_payload AS TEXT))) / 4 AS INTEGER) AS avg_response_tokens,
        CAST(MAX(LENGTH(CAST(r.response_payload AS TEXT))) / 4 AS INTEGER) AS max_response_tokens
-FROM aidb_internal.action_log c
+FROM monitor_feed.action_log c
 JOIN aidb.agents a ON a.id = c.agent_id
 LEFT JOIN monitor.agent_last_change lc ON lc.agent_name = a.name
-LEFT JOIN aidb_internal.action_log r
+LEFT JOIN monitor_feed.action_log r
        ON r.task_id = c.task_id
       AND r.action_type = 'tool_response'
       AND r.response_payload->>'call_id' = c.request_payload->>'call_id'

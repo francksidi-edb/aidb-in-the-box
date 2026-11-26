@@ -40,6 +40,9 @@ for ext in vector pgfs aidb; do
     END \$\$;" || echo "WARN: ALTER EXTENSION $ext UPDATE failed"
 done
 
+# The demo roles, also on volumes created before a role was added (roles.sql can run again).
+PGOPTIONS="-c client_min_messages=warning" psql -d aidb -v ON_ERROR_STOP=1 -q -f /roles.sql || echo "WARN: roles.sql failed"
+
 # Jupyter in the background, started in the postgres home directory where the notebooks are. Jupyter reads its token
 # from JUPYTER_TOKEN (a new one on every start unless set in .env); the app passes it to its "Open in Jupyter" links.
 export JUPYTER_TOKEN="${JUPYTER_TOKEN:-$(python3 -c 'import secrets; print(secrets.token_urlsafe(24))')}"
@@ -48,7 +51,10 @@ cd /var/lib/pgsql
 JUPYTER_PID=$!
 
 # AI in the Box (Flask) in the background, connected to the aidb database. No sign-in: demo only.
+# The status page and Inspect connect as postgres; the apps connect as demo_user and Token Boss as demo_monitor
+# (roles.sql).
 export PGHOST=127.0.0.1 PGPORT=5432 PGDATABASE=aidb PGUSER=postgres PGPASSWORD="${POSTGRES_PASSWORD:-postgres}"
+export AIBOX_DB_USER=demo_user AIBOX_DB_PASSWORD=demo AIBOX_MONITOR_USER=demo_monitor AIBOX_MONITOR_PASSWORD=demo
 export AIBOX_NO_AUTH=1
 cd /var/lib/pgsql/app
 python3 box_server.py > /var/lib/pgsql/aibox.log 2>&1 &

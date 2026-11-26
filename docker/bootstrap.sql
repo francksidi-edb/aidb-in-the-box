@@ -1,5 +1,5 @@
 -- bootstrap.sql  (run by entrypoint.sh as postgres, in database "aidb", on first start)
--- Installs the extensions, creates the roles and the sample "Orbit Cloud support desk" data, and opens
+-- Installs the extensions, creates the roles (roles.sql) and the sample "Orbit Cloud support desk" data, and opens
 -- the AIDB egress allowlist to Anthropic and Hugging Face.
 -- The governance objects (guard schema, tools, agents, purposes) are created by lab.install() in the notebooks.
 
@@ -13,19 +13,7 @@ CREATE EXTENSION IF NOT EXISTS aidb CASCADE;
 ALTER DATABASE aidb SET aidb.otel_client = 'database';
 
 -- ── people ────────────────────────────────────────────────────────────────────
--- demo_user      application user: creates and calls agents          (aidb_users)
--- demo_governor  governance team: owns purposes, reads the audit      (aidb_governance)
-DO $$ BEGIN
-  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'demo_user') THEN
-    CREATE ROLE demo_user LOGIN PASSWORD 'demo';
-  END IF;
-  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'demo_governor') THEN
-    CREATE ROLE demo_governor LOGIN PASSWORD 'demo';
-  END IF;
-END $$;
-GRANT aidb_users      TO demo_user;
-GRANT aidb_governance TO demo_governor;
-GRANT aidb_governance TO demo_user;  -- demo convenience: lets the UI read the audit trail as one user
+\i /roles.sql
 
 -- ── sample data ───────────────────────────────────────────────────────────────
 CREATE SCHEMA IF NOT EXISTS support AUTHORIZATION demo_user;
@@ -114,9 +102,6 @@ INSERT INTO support.tickets(id, customer_id, subject, status, priority, assignee
 ALTER TABLE support.articles  OWNER TO demo_user;
 ALTER TABLE support.customers OWNER TO demo_user;
 ALTER TABLE support.tickets   OWNER TO demo_user;
-
--- pipelines and knowledge bases create their tables in schema public (PG15+ no longer allows CREATE there by default)
-GRANT USAGE, CREATE ON SCHEMA public TO demo_user;
 
 -- ── AIDB egress allowlist ─────────────────────────────────────────────────────
 -- Let AIDB reach Anthropic and Hugging Face. Missing hosts are appended to an existing allowlist, never replacing it.

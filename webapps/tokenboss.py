@@ -9,7 +9,8 @@ from flask import Blueprint, request
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
-from .common import (api, db_error, execute, get_engine, query, records, relation_exists, reply, start_job)
+from .common import (api, db_error, db_role, execute, get_engine, query, records, relation_exists, reply,
+                     start_job)
 from .tokenboss_sql import *  # noqa: F401,F403  (SQL text and constants)
 from .tokenboss_sql import (AGENT_FILTER, CREATE_VIEW_SQL, DELETED_LABEL, GROUP_TITLES, HIGH_TOKENS_DEFAULT,  # noqa: F401
                             MODEL_NAME, MODIFIER_NAME, MODIFY_TOOL_NAMES, REVIEW_TOOL_NAMES, REVIEWER_NAME,
@@ -18,6 +19,7 @@ from .tokenboss_sql import (AGENT_FILTER, CREATE_VIEW_SQL, DELETED_LABEL, GROUP_
                             reviewer_prompt, scorecard_sql, wildcard_to_ilike)
 
 bp = Blueprint("tokenboss", __name__, url_prefix="/api/tokenboss")
+db_role(bp, "monitor")  # reads every user's agent activity (docker/roles.sql)
 
 
 def numbers(df, ints, floats=None):
@@ -34,8 +36,12 @@ def fmt_time(t):
 
 
 def ensure_view_if_needed():
-    """Create monitor.task_stats only if it does not exist (it is never replaced)."""
+    """Create monitor.task_stats only if it does not exist (it is never replaced), except views from before
+    monitor_feed (docker/roles.sql): they read aidb_internal.action_log, which shows Token Boss only its own actions,
+    so the setup objects are created again."""
     if relation_exists("monitor.task_stats"):
+        if "monitor_feed." not in query("SELECT pg_get_viewdef('monitor.task_stats'::regclass)").iloc[0, 0]:
+            run_statements(SETUP_OBJECT_STATEMENTS)
         return
     execute("CREATE SCHEMA IF NOT EXISTS monitor")
     try:
@@ -49,7 +55,7 @@ def monitor_state():
     """(ready, connection ok, connection error). Ready = the log, agents table and task view exist."""
     try:
         ensure_view_if_needed()
-        return all(relation_exists(n) for n in ("aidb_internal.action_log", "aidb.agents", "monitor.task_stats")), True, None
+        return all(relation_exists(n) for n in ("monitor_feed.action_log", "aidb.agents", "monitor.task_stats")), True, None
     except Exception as e:  # noqa: BLE001
         return False, False, db_error(e)
 

@@ -46,7 +46,7 @@ This repo is a framework you can drop notebooks and apps into.
 
 - **Notebooks** are in `notebooks/`, grouped in the menu by `static/data.json` (Agents, Cost Optimization, Governance). Open **Jupyter Notebooks** under **Run it** to run them. They are copied to Jupyter's home folder, `/var/lib/pgsql` in the container. Edits you make in Jupyter live in the container and are not saved back to this repo.
 - **Apps** are pages in the web app. Each has a backend in `webapps/` and a page in `static/`.
-- **Sample data and roles** the notebooks and apps rely on are created on first start (`docker/bootstrap.sql`). Sample PDFs are in `pgfs/`, copied to `/tmp/pgfs/` in the container.
+- **Sample data and roles** the notebooks and apps rely on are created on first start (`docker/bootstrap.sql`, roles in `docker/roles.sql`). The apps connect as `demo_user`, Token Boss as `demo_monitor`, not as the superuser. Sample PDFs are in `pgfs/`, copied to `/tmp/pgfs/` in the container.
 
 Some demos need the internet (Hugging Face, irs.gov, and model downloads the first time a local model is used) and an Anthropic API key, which the notebooks and apps ask for when needed.
 

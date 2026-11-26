@@ -23,7 +23,7 @@ AU.mounts.tokenboss=async el=>{
       ${s.conn_error?AU.err('Cannot reach the database: '+s.conn_error):''}`;
   }
   const tab=()=>({agents,performance,history,setup}[TB.tab])();
-  const notReady=()=>AU.msg('info','The monitor is not ready yet. Run the steps on the Setup tab, and check that the database user can read aidb_internal.');
+  const notReady=()=>AU.msg('info','The monitor is not ready yet. Run the steps on the Setup tab, and check that the database user can read monitor_feed.action_log (docker/roles.sql).');
 
   /* ------------------------------------------------------------ Agents */
   function agents(){

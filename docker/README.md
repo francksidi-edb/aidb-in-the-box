@@ -50,17 +50,28 @@ On the **first start** (an empty data volume), `entrypoint.sh`:
 
 1. Runs `initdb` and configures Postgres: `shared_preload_libraries = 'aidb,pg_tokenizer'`, `aidb.otel_client = 'database'`, and password login for remote connections.
 2. Creates the database `aidb`.
-3. Runs `bootstrap.sql`: the extensions (`aidb`, `pgfs`, `vector`, `pg_tokenizer`, `vchord_bm25`), the roles `demo_user` and `demo_governor` (password `demo`), the sample "Orbit Cloud support desk" tables some notebooks use, and the AIDB egress allowlist (it adds `api.anthropic.com` and the Hugging Face hosts to the existing list and never replaces it).
+3. Runs `bootstrap.sql`: the extensions (`aidb`, `pgfs`, `vector`, `pg_tokenizer`, `vchord_bm25`), the roles from `roles.sql` (see [Database users](#database-users)), the sample "Orbit Cloud support desk" tables some notebooks use, and the AIDB egress allowlist (it adds `api.anthropic.com` and the Hugging Face hosts to the existing list and never replaces it).
 
 Steps 2 and 3 count as done only when `bootstrap.sql` finishes (until then `aibox-bootstrap.todo` is in the data directory). If the first start fails partway, fix the cause and start again: the next start repeats them.
 
-On **every start** it updates the extensions, starts Jupyter Notebook (port 8888, with a new token on every start unless you set `JUPYTER_TOKEN` in `docker/.env`) from `/var/lib/pgsql`, and starts the AI in the Box app (port 8650), connected to `aidb` as `postgres`. The apps are part of that same app and use the same connection, so they need no extra ports or processes.
+On **every start** it updates the extensions, runs `roles.sql` again (so a volume created before a role was added gets it), starts Jupyter Notebook (port 8888, with a new token on every start unless you set `JUPYTER_TOKEN` in `docker/.env`) from `/var/lib/pgsql`, and starts the AI in the Box app (port 8650). The apps are part of that same app, so they need no extra ports or processes.
 
 The image also includes:
 
 - the notebooks, copied to `/var/lib/pgsql` (where Jupyter starts);
 - the sample documents, copied to `/tmp/pgfs/` (the `pgfs` volume);
 - the app in `/var/lib/pgsql/app`: `box_server.py`, the `webapps/` backends for the apps, `static/` and the Introspector.
+
+## Database users
+
+| User (password `demo`) | Used by | Can |
+| :-- | :-- | :-- |
+| `postgres` | the status page (read-only) and Inspect (its SQL console can also write), and the notebooks that need a superuser: Agents - Governance (creates roles), Agents - Budgets and Agents - Semantic KB (AIDB 7.10 lets only a superuser create a semantic knowledge base), the MCP notebook (`ALTER SYSTEM`) and the governance notebooks' setup cells | everything |
+| `demo_user` | Converse, Customs Document Validation and the other Agents notebooks, so the agents, pipelines and tables the apps use belong to it | create and call agents (`aidb_users`), read the audit trail (`aidb_governance`) |
+| `demo_governor` | the governance notebooks' approvals | own purposes, read the audit trail (`aidb_governance`) |
+| `demo_monitor` | Token Boss | see every user's agent activity (through the view `monitor_feed.action_log`, which `postgres` owns), change `demo_user`'s agents (member of `demo_user`), create the `monitor` schema |
+
+AIDB lets only the owner role of an agent, pipeline or tool change or delete it. On a volume created before the apps switched to `demo_user`, the objects the notebooks created as `postgres` still belong to `postgres`: run those notebooks again after `./rebuild.sh`, or the apps cannot change them. Converse lists only the agents of roles its user belongs to. The same goes for Token Boss: its model, tools and agents from before belong to `postgres`, so they need `./rebuild.sh` and the Setup tab again.
 
 ## Data
 

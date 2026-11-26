@@ -41,7 +41,7 @@ COPY --chown=postgres:postgres webapps webapps
 COPY --chown=postgres:postgres static static
 COPY --chown=postgres:postgres notebooks notebooks
 COPY --chown=postgres:postgres docker/entrypoint.sh /entrypoint.sh
-COPY --chown=postgres:postgres docker/bootstrap.sql /bootstrap.sql
+COPY --chown=postgres:postgres docker/bootstrap.sql docker/roles.sql /
 
 # Notebooks are copied to the postgres home directory (where Jupyter starts); the sample documents go to /tmp/pgfs for pgfs.
 COPY --chown=postgres:postgres notebooks/ /var/lib/pgsql/
