@@ -67,7 +67,7 @@ Copy it to `notebooks/`, add an entry to `static/data.json`, and rebuild (`./sta
 | `docker/` | Everything for the container: `Dockerfile`, `docker-compose.yml`, `entrypoint.sh`, `bootstrap.sql`, and the `start.sh`, `stop.sh` and `rebuild.sh` scripts. |
 | `notebooks/` | The demo notebooks, plus helper files they use. |
 | `pgfs/` | Sample documents, copied to `/tmp/pgfs/` in the container. |
-| `box_server.py` | The web app's server (Flask). It serves the UI, the notebook pages and the connection check. |
+| `box_server.py` | The web app's server (Flask, served by waitress in the container). It serves the UI, the notebook pages and the connection check. |
 | `webapps/` | The apps' backends: Flask blueprints with JSON APIs under `/api/<app>/`. |
 | `static/` | The web UI: `index.html`, `inspect.js` for the Inspect pages, the apps' pages, `data.json` (the notebook catalog that builds the menu) and the logo. |
 | `introspector/`, `introspect_mount.py` | The read-only AIDB Introspector backend, mounted at `/introspect/`. The Inspect pages call it. Server from francksidi-edb/aidb-showcase, unmodified. |

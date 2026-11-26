@@ -16,10 +16,12 @@ import glob
 import hmac
 import secrets
 import json
+import logging
 import os
 import re
 import shutil
 import subprocess
+import sys
 import urllib.parse
 
 from flask import Flask, Response, abort, jsonify, request, send_from_directory
@@ -217,6 +219,8 @@ import introspect_mount  # noqa: E402
 app.wsgi_app = DispatcherMiddleware(app.wsgi_app, {"/introspect": introspect_mount.build_app(access_denied)})
 
 if __name__ == "__main__":
+    sys.stdout.reconfigure(line_buffering=True)   # the container writes this to aibox.log
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     if EXPOSED and NO_AUTH:
         print("AI in the Box listening on %s:%d with NO PASSWORD (AIBOX_NO_AUTH): testing only. Only these host names are "
               "served (add more with AIBOX_ALLOWED_HOSTS): %s" % (HOST, PORT, ", ".join(sorted(ALLOWED_HOSTS))))
@@ -225,4 +229,9 @@ if __name__ == "__main__":
         print("Open the ports in your firewall / EC2 security group, and prefer HTTPS or an SSH tunnel on untrusted networks.")
     else:
         print("AI in the Box  ->  http://127.0.0.1:%d" % PORT)
-    app.run(host=HOST, port=PORT, debug=False)
+    try:
+        from waitress import serve
+    except ImportError:   # outside the container: Flask's development server is fine for one local user
+        app.run(host=HOST, port=PORT, debug=False, threaded=True)
+    else:
+        serve(app, host=HOST, port=PORT, threads=16)   # agent calls can take minutes, so keep spare threads
