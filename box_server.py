@@ -161,11 +161,16 @@ def status():
     ok, rows = psql("select extname, extversion from pg_extension where extname in (%s)"
                     % ",".join("'%s'" % w for w in wanted))
     installed = {r[0]: r[1] for r in rows} if ok else {}
-    ok2, avail = psql("select name from pg_available_extensions where name in (%s)"
+    ok2, avail = psql("select name, default_version from pg_available_extensions where name in (%s)"
                       % ",".join("'%s'" % w for w in wanted))
-    available = {r[0] for r in avail} if ok2 else set()
+    available = {r[0]: r[1] for r in avail} if ok2 else {}
+    # update_pending: the installed package is newer than the extension's SQL objects in the database (the entrypoint
+    # runs ALTER EXTENSION ... UPDATE on every start, so in the container that update failed)
     out["extensions"] = [{"name": w, "installed": installed.get(w),
-                          "available": w in available or w in installed} for w in wanted]
+                          "available": w in available or w in installed,
+                          "library": available.get(w),
+                          "update_pending": w in installed and w in available and installed[w] != available[w]}
+                         for w in wanted]
     ok, rows = psql("select to_regclass('support.tickets') is not null")   # sample data from docker/bootstrap.sql
     out["demo_data"] = bool(ok and rows and rows[0][0] == "t")
     if "aidb" in installed:

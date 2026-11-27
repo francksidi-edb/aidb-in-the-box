@@ -11,7 +11,7 @@ DELETED_LABEL = "(deleted)"
 
 # Token Boss's views are replaced together, in one transaction, whenever monitor.task_stats does not carry this
 # comment: CREATE OR REPLACE VIEW cannot change a column's type or drop a column. The tables are kept.
-VIEWS_VERSION = "Token Boss views, version 3"
+VIEWS_VERSION = "Token Boss views, version 4"
 VIEWS_COMMENT_SQL = f"COMMENT ON VIEW monitor.task_stats IS '{VIEWS_VERSION}'"
 # model_ids and task_usage were views of an older Token Boss; they are functions in schema monitor_feed now
 DROP_VIEWS_SQL = ("DROP VIEW IF EXISTS monitor.task_stats, monitor.agent_last_change, monitor.recent_task_stats, "
@@ -48,7 +48,7 @@ SELECT l.task_id,
                 WHEN l.action_type = 'tool_call'
                 THEN LENGTH(CAST(l.request_payload AS TEXT)) ELSE 0 END) / 4 AS est_output_tokens
 FROM monitor_feed.action_log() l
-LEFT JOIN aidb.agents a ON a.id = l.agent_id
+LEFT JOIN monitor_feed.agents() a ON a.id = l.agent_id
 GROUP BY l.task_id, l.conversation_id, l.agent_id, a.name
 ) g
 LEFT JOIN monitor_feed.task_usage() u ON u.task_id = CAST(g.task_id AS text)
@@ -291,7 +291,7 @@ FROM (
     SELECT a.name AS agent_name, l.action_type, l.created_at,
            l.response_payload->>'error' AS message
     FROM monitor_feed.action_log() l
-    JOIN aidb.agents a ON a.id = l.agent_id
+    JOIN monitor_feed.agents() a ON a.id = l.agent_id
     LEFT JOIN monitor.agent_last_change lc ON lc.agent_name = a.name
     WHERE l.status = 'ERROR' AND (lc.changed_at IS NULL OR l.created_at >= lc.changed_at)
   ) m
@@ -315,7 +315,7 @@ SELECT a.name AS agent_name,
        CAST(AVG(LENGTH(CAST(r.response_payload AS TEXT))) / 4 AS INTEGER) AS avg_response_tokens,
        CAST(MAX(LENGTH(CAST(r.response_payload AS TEXT))) / 4 AS INTEGER) AS max_response_tokens
 FROM monitor_feed.action_log() c
-JOIN aidb.agents a ON a.id = c.agent_id
+JOIN monitor_feed.agents() a ON a.id = c.agent_id
 LEFT JOIN monitor.agent_last_change lc ON lc.agent_name = a.name
 LEFT JOIN monitor_feed.action_log() r
        ON r.task_id = c.task_id

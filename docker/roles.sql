@@ -122,8 +122,17 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog AS $$
   FROM aidb.models m
 $$;
 
+-- Every agent's id and name, for Token Boss's views (aidb.agents is public, but a view on it would block an AIDB update
+-- that drops or changes it, as 7.7 -> 7.8 did with aidb.models).
+CREATE OR REPLACE FUNCTION monitor_feed.agents()
+RETURNS TABLE (id uuid, name text)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog AS $$
+  SELECT id, name FROM aidb.agents
+$$;
+
 RESET check_function_bodies;
 
-REVOKE ALL ON FUNCTION monitor_feed.action_log(), monitor_feed.task_usage(), monitor_feed.model_ids() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION monitor_feed.action_log(), monitor_feed.task_usage() TO demo_monitor;
+REVOKE ALL ON FUNCTION monitor_feed.action_log(), monitor_feed.task_usage(), monitor_feed.model_ids(),
+                       monitor_feed.agents() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION monitor_feed.action_log(), monitor_feed.task_usage(), monitor_feed.agents() TO demo_monitor;
 GRANT EXECUTE ON FUNCTION monitor_feed.model_ids() TO demo_user, demo_governor, demo_monitor;

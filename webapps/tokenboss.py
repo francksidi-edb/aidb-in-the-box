@@ -35,13 +35,14 @@ def fmt_time(t):
 
 
 VIEWS_STATE_SQL = """SELECT obj_description(to_regclass('monitor.task_stats'), 'pg_class') AS version,
-                           to_regclass('monitor.task_stats') IS NOT NULL AS present"""
+                           to_regclass('monitor.agent_config_history') IS NOT NULL AS set_up"""
 
 
 def create_objects(always=False):
     """Create Token Boss's schema, tables and views (setup step 2), or with always=False only when monitor.task_stats is
     missing or from another Token Boss version (VIEWS_VERSION): older views show only estimated tokens or, from before
-    monitor_feed (docker/roles.sql), only Token Boss's own actions. Without task_stats only it is created. One
+    monitor_feed (docker/roles.sql), only Token Boss's own actions. Before setup ran (its tables are missing) only
+    task_stats is created; once it ran, all of them, also after entrypoint.sh dropped old views for an AIDB update. One
     transaction, under an advisory lock, so the first requests after an upgrade do not replace the views at once."""
     with get_engine().connect() as c:
         c.execute(text("SELECT pg_advisory_lock(hashtext('tokenboss-views'))"))
@@ -49,7 +50,7 @@ def create_objects(always=False):
             state = c.execute(text(VIEWS_STATE_SQL)).mappings().first()
             if not always and state["version"] == VIEWS_VERSION:
                 return
-            statements = (SETUP_OBJECT_STATEMENTS if always or state["present"]
+            statements = (SETUP_OBJECT_STATEMENTS if always or state["set_up"]
                           else ["CREATE SCHEMA IF NOT EXISTS monitor", CREATE_VIEW_SQL, VIEWS_COMMENT_SQL])
             c.execute(text(script(statements)))  # one query string: one transaction
         finally:

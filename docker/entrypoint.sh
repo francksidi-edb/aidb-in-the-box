@@ -30,6 +30,27 @@ fi
 # Start Postgres in the background so a restart from a notebook doesn't stop the container.
 pg_ctl -D "$PGDATA" -w start
 
+# Before AIDB's SQL is updated, drop the views of older Token Boss versions: they read AIDB views and tables directly,
+# and an update script that drops or changes one fails while they exist (7.7 -> 7.8 drops aidb.models). They hold no
+# data, and Token Boss replaces them with views that read AIDB only through monitor_feed's functions (roles.sql).
+psql -d aidb -qAt -c "
+  DO \$\$
+  BEGIN
+    IF EXISTS (SELECT FROM pg_extension e JOIN pg_available_extensions a ON a.name = e.extname
+               WHERE e.extname = 'aidb' AND e.extversion <> a.default_version)
+       AND EXISTS (  -- a view in schema monitor that reads an object of extension aidb
+         SELECT FROM pg_depend d
+         JOIN pg_rewrite rw ON d.classid = 'pg_rewrite'::regclass AND rw.oid = d.objid
+         JOIN pg_class v ON v.oid = rw.ev_class
+         JOIN pg_namespace n ON n.oid = v.relnamespace AND n.nspname = 'monitor'
+         JOIN pg_depend m ON m.classid = d.refclassid AND m.objid = d.refobjid AND m.deptype = 'e'
+         JOIN pg_extension x ON x.oid = m.refobjid AND x.extname = 'aidb') THEN
+      DROP VIEW IF EXISTS monitor.task_stats, monitor.agent_last_change, monitor.recent_task_stats,
+        monitor.agent_scorecard, monitor.error_summary, monitor.repeated_calls, monitor.tool_usage, monitor.model_ids,
+        monitor.task_usage CASCADE;  -- the names in DROP_VIEWS_SQL (webapps/tokenboss_sql.py)
+    END IF;
+  END \$\$;" || echo "WARN: could not drop the old Token Boss views before the AIDB update"
+
 for ext in vector pgfs aidb; do
   psql -d aidb -qAt -c "
     DO \$\$
@@ -37,7 +58,10 @@ for ext in vector pgfs aidb; do
       IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = '$ext') THEN
         EXECUTE 'ALTER EXTENSION $ext UPDATE';
       END IF;
-    END \$\$;" || echo "WARN: ALTER EXTENSION $ext UPDATE failed"
+    END \$\$;" || {
+    echo "ERROR: ALTER EXTENSION $ext UPDATE failed (the error is above). The database still has the SQL objects of the"
+    echo "       old $ext version, which the installed $ext library does not work with. Fix the cause, then restart."
+  }
 done
 
 # The demo roles, also on volumes created before a role was added (roles.sql can run again).

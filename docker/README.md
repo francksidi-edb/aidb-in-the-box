@@ -101,6 +101,7 @@ After you change a notebook, the app or the Dockerfile in the repo, run `./start
 | The pill says "Database not connected" | The first start can take a minute or two. Check `docker compose logs pg`. |
 | Port 5432, 8650 or 8888 already in use | Stop the other program, or change the left side of the port in `docker-compose.yml`. |
 | The app answers `Forbidden host.` | It only serves `localhost` and `127.0.0.1`, so a web page that rebinds its DNS name cannot reach it. To open it under another name (a tunnel or an SSH port forward), set `AIBOX_ALLOWED_HOSTS=name1,name2` in `docker/.env`. |
+| The pill says "(update needed)", or AIDB functions fail with "column … does not exist" | The image has a newer extension package than the database's SQL objects, because the update on start failed. `docker compose logs pg` shows the error before "ALTER EXTENSION … UPDATE failed"; fix that, then `docker compose restart`. Views of Token Boss versions before 4 blocked AIDB updates; the start script now drops them first. |
 | The pill says "(untested)" | The installed AIDB release is not the one the demos were tested with (see [What the container sets up](#what-the-container-sets-up)). Most demos still work; check the system check for the versions. |
 | An app says it cannot reach the database | Check `docker compose exec pg cat /var/lib/pgsql/aibox.log`. |
 | Agent calls fail with an `egress` error | The host is not on AIDB's egress allowlist. Add it with `ALTER SYSTEM SET aidb.egress_allowlist = '...'` and `SELECT pg_reload_conf();`. |

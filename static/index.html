@@ -306,9 +306,11 @@ function statusHtml(s){
   let h='<div class="ck">'+row(s.psql,'psql client',s.psql?'Found on PATH.':'The psql client is missing from the container image.')
    +row(s.connected,'Database connection',s.connected?esc(s.server):esc(s.error||'')+'<br>The container connects with host '+esc(c.PGHOST)+', port '+esc(c.PGPORT)+', database '+esc(c.PGDATABASE)+', user '+esc(c.PGUSER)+'. Check the container log: <code>docker compose logs pg</code>.');
   if(s.connected){
-    h+=(s.extensions||[]).map(e=>row(!!e.installed,e.name,e.installed?'Installed, version '+esc(e.installed):(e.available?'Available. Run <code>CREATE EXTENSION '+esc(e.name)+(e.name==='aidb'?' CASCADE':'')+';</code>':'Not included in this image.'))).join('');
-    const v=s.aidb_version;
-    if(v) h+=row(v.compatible,'AIDB version',v.compatible?'Version '+esc(v.installed)+', the version the notebooks and apps were tested with ('+esc(v.tested)+').'
+    h+=(s.extensions||[]).map(e=>row(!!e.installed&&!e.update_pending,e.name,e.update_pending
+      ?'Not updated: the installed package is version '+esc(e.library)+', but the database still has the SQL objects of version '+esc(e.installed)+', and functions of the extension can fail until they match. Run <code>ALTER EXTENSION '+esc(e.name)+' UPDATE;</code> and its error says what blocks the update. The container runs it on every start and logs a failure: in the <code>docker</code> folder, <code>docker compose logs pg</code>.'
+      :e.installed?'Installed, version '+esc(e.installed):(e.available?'Available. Run <code>CREATE EXTENSION '+esc(e.name)+(e.name==='aidb'?' CASCADE':'')+';</code>':'Not included in this image.'))).join('');
+    const v=s.aidb_version,ax=(s.extensions||[]).find(e=>e.name==='aidb');
+    if(v&&!(ax&&ax.update_pending)) h+=row(v.compatible,'AIDB version',v.compatible?'Version '+esc(v.installed)+', the version the notebooks and apps were tested with ('+esc(v.tested)+').'
       :'Version '+esc(v.installed)+' is installed, but the notebooks and apps were tested with '+esc(v.tested)+', so some steps may not work as described. The image installs the latest AIDB release. Once you have tested this one, set <code>AIBOX_TESTED_AIDB_VERSION</code> in <code>docker/.env</code>.');
     h+=row(s.demo_data,'Sample data',s.demo_data?'The Orbit Cloud support desk tables (schema <code>support</code>) are loaded.':'Schema <code>support</code> is missing. It is created by <code>docker/bootstrap.sql</code> on the first start.');
     if(s.aidb_counts) h+=row(true,'AIDB objects',s.aidb_counts.models+' models, '+s.aidb_counts.agents+' agents registered.');
@@ -320,10 +322,11 @@ function connPill(){
   const el=$('#conn'); el.onclick=()=>{location.hash='status'};
   fetch('/api/status').then(r=>r.json()).then(s=>{
     const a=(s.extensions||[]).find(e=>e.name==='aidb');
-    const v=s.aidb_version,untested=v&&!v.compatible;
-    el.className='connpill '+(s.connected&&a&&a.installed?(untested?'warn':'ok'):'bad');
-    el.title=untested?'AIDB '+v.installed+' is not the tested version ('+v.tested+'). Open the system check for details.':'';
-    el.innerHTML='<i></i>'+(s.connected?(a&&a.installed?'Connected · AIDB '+esc(a.installed)+(untested?' (untested)':''):'Connected · AIDB not installed'):'Database not connected');
+    const v=s.aidb_version,stale=(s.extensions||[]).filter(e=>e.update_pending),failed=stale.length>0,untested=v&&!v.compatible;
+    el.className='connpill '+(s.connected&&a&&a.installed?(failed?'bad':untested?'warn':'ok'):'bad');
+    el.title=failed?'Not updated to the installed package: '+stale.map(e=>e.name).join(', ')+'. Open the system check for details.'
+      :untested?'AIDB '+v.installed+' is not the tested version ('+v.tested+'). Open the system check for details.':'';
+    el.innerHTML='<i></i>'+(s.connected?(a&&a.installed?'Connected · AIDB '+esc(a.installed)+(failed?' (update needed)':untested?' (untested)':''):'Connected · AIDB not installed'):'Database not connected');
   }).catch(()=>{el.className='connpill bad';el.innerHTML='<i></i>Server not reachable'});
 }
 /* One of the demo apps. The pages are built by AppsUI.mount (apps.js, tokenboss.js). */
