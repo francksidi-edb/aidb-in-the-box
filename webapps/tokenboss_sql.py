@@ -496,14 +496,15 @@ BEGIN
 
     PERFORM aidb.create_sql_tool(
       name => v_name,
-      description => 'Make one small edit to an agent. Requires the history_id returned by save_agent_snapshot for the same agent. To change the instructions, pass old_text, an exact short snippet copied from the current instructions, and new_text, what replaces it (an empty new_text deletes the snippet). To add a line to the end of the instructions, leave old_text empty and pass the line as new_text. To change the tools, pass new_tools as the full comma-separated list of tool names with no spaces. Leave a parameter as an empty string when it is not part of this edit. Call once per edit. No rows means nothing changed, usually because old_text was not found exactly. A row with an error means AIDB rejected the edit, for example a tool name that does not exist: nothing changed, and if no earlier edit used this history_id the snapshot is discarded.',
+      description => 'Make one small edit to an agent. Requires the history_id returned by save_agent_snapshot for the same agent. To change the instructions, pass old_text, an exact short snippet copied from the current instructions, and new_text, what replaces it (an empty new_text deletes the snippet). To add a line to the end of the instructions, leave old_text empty and pass the line as new_text. To change the tools, pass new_tools as the full comma-separated list of tool names with no spaces. Leave a parameter as an empty string when it is not part of this edit. Call once per edit. No rows means nothing changed, usually because old_text was not found exactly, or was found more than once: then copy a longer snippet. A row with an error means AIDB rejected the edit, for example a tool name that does not exist: nothing changed, and if no earlier edit used this history_id the snapshot is discarded.',
       sql_statement => 'MERGE INTO monitor.agent_config_history h
         USING (SELECT e.*,
                       (SELECT u.error FROM aidb.update_agent(e.name, instructions => e.instructions,
                                                              tools => e.tools) u) AS error
                  FROM (SELECT a.name, s.history_id, a.instructions AS old_instructions, a.tools AS old_tools,
                               CASE WHEN NULLIF(${old_text}, '''') IS NOT NULL
-                                   THEN REPLACE(a.instructions, ${old_text}, ${new_text})
+                                   THEN OVERLAY(a.instructions PLACING ${new_text}
+                                                FROM POSITION(${old_text} IN a.instructions) FOR LENGTH(${old_text}))
                                    WHEN NULLIF(${new_text}, '''') IS NOT NULL
                                    THEN a.instructions || chr(10) || ${new_text}
                               END AS instructions,
@@ -513,7 +514,10 @@ BEGIN
                            ON s.history_id = CAST(${history_id} AS BIGINT) AND s.agent_name = a.name
                         WHERE a.name = ${agent_name}
                           AND a.name NOT IN (''agent_reviewer'', ''agent_modifier'')
-                          AND (NULLIF(${old_text}, '''') IS NULL OR POSITION(${old_text} IN a.instructions) > 0)) e) p
+                          AND (NULLIF(${old_text}, '''') IS NULL
+                               OR (POSITION(${old_text} IN a.instructions) > 0
+                                   AND POSITION(${old_text} IN SUBSTR(a.instructions,
+                                                POSITION(${old_text} IN a.instructions) + 1)) = 0))) e) p
            ON h.history_id = p.history_id
          WHEN MATCHED AND p.error IS NULL THEN
               UPDATE SET new_config = jsonb_build_object(
@@ -526,7 +530,7 @@ BEGIN
       params => aidb.tool_params(
         aidb.tool_param('agent_name', 'TEXT', 'The exact name of the agent to change.'),
         aidb.tool_param('history_id', 'TEXT', 'The history_id number returned by save_agent_snapshot for this agent, for example 7. Never guess it; call save_agent_snapshot first.'),
-        aidb.tool_param('old_text', 'TEXT', 'An exact snippet of the current instructions to replace, or an empty string to append to the end.'),
+        aidb.tool_param('old_text', 'TEXT', 'An exact snippet of the current instructions to replace, long enough to occur only once, or an empty string to append to the end.'),
         aidb.tool_param('new_text', 'TEXT', 'The replacement text, or the line to append. An empty string deletes the snippet.'),
         aidb.tool_param('new_tools', 'TEXT', 'Full comma-separated list of tool names with no spaces, or an empty string to leave the tools unchanged.')
       ),
@@ -574,7 +578,7 @@ $do$;
 
 SETUP_MODIFIER_SQL = agent_sql(
     'agent_modifier',
-    'You apply recommended changes to AIDB agents. You change only the agent named in the request, and only what the recommendation says. Keep everything you write short.\n\nSteps:\n1. Call review_agent_config for the agent to read its current instructions and tools. Do not skip this step.\n2. Decide the smallest edits that implement the recommendation. Never rewrite the whole instructions. Each instruction edit replaces one short snippet, a line or two, copied exactly from the current instructions, or adds one line at the end. A tool change is the full new comma-separated list with no spaces.\n3. Call save_agent_snapshot once, with the agent name and a reason of one or two short sentences. Note the history_id it returns; you must have it before step 4, never invent one.\n4. Call apply_agent_change once per edit, with the same agent name and that history_id. Use an empty string for any parameter that is not part of that edit.\n5. Reply in three lines or fewer: the agent name, the history_id, and what changed.\n\nIf a call returns an error or no rows, report it and stop. Do not retry. Never change instructions or tools that the recommendation does not mention. Only call revert_agent when the request asks for a revert, and give it the history_id from the request.\n',
+    'You apply recommended changes to AIDB agents. You change only the agent named in the request, and only what the recommendation says. Keep everything you write short.\n\nSteps:\n1. Call review_agent_config for the agent to read its current instructions and tools. Do not skip this step.\n2. Decide the smallest edits that implement the recommendation. Never rewrite the whole instructions. Each instruction edit replaces one short snippet, a line or two, copied exactly from the current instructions and occurring there only once, or adds one line at the end. A tool change is the full new comma-separated list with no spaces.\n3. Call save_agent_snapshot once, with the agent name and a reason of one or two short sentences. Note the history_id it returns; you must have it before step 4, never invent one.\n4. Call apply_agent_change once per edit, with the same agent name and that history_id. Use an empty string for any parameter that is not part of that edit.\n5. Reply in three lines or fewer: the agent name, the history_id, and what changed.\n\nIf a call returns an error or no rows, report it and stop. Do not retry. Never change instructions or tools that the recommendation does not mention. Only call revert_agent when the request asks for a revert, and give it the history_id from the request.\n',
     ['review_agent_config', 'save_agent_snapshot', 'apply_agent_change', 'revert_agent'])
 
 def script(statements: list[str]) -> str:

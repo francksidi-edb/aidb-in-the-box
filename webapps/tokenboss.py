@@ -92,10 +92,12 @@ def present_now():
     return {
         "model": names_present("SELECT name FROM aidb.models WHERE name = ANY(:n)", [MODEL_NAME]),
         "objects": {n for n in VIEW_NAMES if safe_relation_exists(n)},
-        # modify tools from an older Token Boss wrote aidb.agents directly: they count as missing until step 4 runs
+        # modify tools from an older Token Boss count as missing until step 4 runs: they wrote aidb.agents directly, and
+        # an older apply_agent_change replaced every occurrence of old_text (REPLACE, not OVERLAY)
         "tools": names_present("SELECT name FROM aidb.sql_tool_registry WHERE name = ANY(:n) "
-                               "AND (NOT name = ANY(:m) OR query_text LIKE '%aidb.update_agent%')",
-                               REVIEW_TOOL_NAMES + MODIFY_TOOL_NAMES, {"m": ["apply_agent_change", "revert_agent"]}),
+                               "AND (name <> 'revert_agent' OR query_text LIKE '%aidb.update_agent%') "
+                               "AND (name <> 'apply_agent_change' OR query_text LIKE '%OVERLAY(%')",
+                               REVIEW_TOOL_NAMES + MODIFY_TOOL_NAMES),
         "agents": names_present("SELECT name FROM aidb.agents WHERE name = ANY(:n)", [REVIEWER_NAME, MODIFIER_NAME]),
     }
 
