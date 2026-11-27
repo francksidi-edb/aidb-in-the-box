@@ -3,14 +3,34 @@ import json
 import os
 
 
-# Estimated input tokens per task above which an agent is flagged (adjustable in the Agents tab)
+# Input tokens per task above which an agent is flagged (adjustable in the Agents tab)
 HIGH_TOKENS_DEFAULT = int(os.getenv("MONITOR_HIGH_TOKENS", "5000"))
 
 DELETED_LABEL = "(deleted)"
 
 
+# Token Boss's views are replaced together, in one transaction, whenever monitor.task_stats does not carry this
+# comment: CREATE OR REPLACE VIEW cannot change a column's type or drop a column. The tables are kept.
+VIEWS_VERSION = "Token Boss views, version 4"
+VIEWS_COMMENT_SQL = f"COMMENT ON VIEW monitor.task_stats IS '{VIEWS_VERSION}'"
+# model_ids and task_usage were views of an older Token Boss; they are functions in schema monitor_feed now
+DROP_VIEWS_SQL = ("DROP VIEW IF EXISTS monitor.task_stats, monitor.agent_last_change, monitor.recent_task_stats, "
+                  "monitor.agent_scorecard, monitor.error_summary, monitor.repeated_calls, monitor.tool_usage, "
+                  "monitor.model_ids, monitor.task_usage CASCADE")
+
+# One row per task. est_* are estimates (characters / 4); input_tokens and output_tokens are what the provider
+# reported (monitor_feed.task_usage(), docker/roles.sql) or, where that is missing, the estimate, and token_note says why.
 CREATE_VIEW_SQL = """
 CREATE OR REPLACE VIEW monitor.task_stats AS
+SELECT g.*,
+       COALESCE(u.input_tokens, g.est_input_tokens) AS input_tokens,
+       COALESCE(u.output_tokens, g.est_output_tokens) AS output_tokens,
+       u.input_tokens IS NOT NULL AND u.output_tokens IS NOT NULL AS tokens_reported,
+       CASE WHEN u.task_id IS NULL THEN 'no agent_converse span in aidb_otel.traces'
+            WHEN u.input_raw IS NULL AND u.output_raw IS NULL THEN 'the span has no token usage'
+            WHEN u.input_tokens IS NULL OR u.output_tokens IS NULL THEN 'the span''s token usage is incomplete or not a number'
+       END AS token_note
+FROM (
 SELECT l.task_id,
        l.conversation_id,
        a.name AS agent_name,
@@ -27,9 +47,11 @@ SELECT l.task_id,
                 THEN LENGTH(CAST(l.response_payload AS TEXT))
                 WHEN l.action_type = 'tool_call'
                 THEN LENGTH(CAST(l.request_payload AS TEXT)) ELSE 0 END) / 4 AS est_output_tokens
-FROM aidb_internal.action_log l
-LEFT JOIN aidb.agents a ON a.id = l.agent_id
+FROM monitor_feed.action_log() l
+LEFT JOIN monitor_feed.agents() a ON a.id = l.agent_id
 GROUP BY l.task_id, l.conversation_id, l.agent_id, a.name
+) g
+LEFT JOIN monitor_feed.task_usage() u ON u.task_id = CAST(g.task_id AS text)
 """
 
 AGENT_FILTER = ("(({col} IS NOT NULL AND (:pat IS NULL OR {col} ILIKE :pat)) "
@@ -64,14 +86,15 @@ WITH agent_scorecard AS (
            SUM(tool_errors)        AS tool_errors,
            SUM(compactions)        AS compactions,
            SUM(compaction_errors)  AS compaction_errors,
-           CAST(SUM(est_input_tokens) / COUNT(*) AS INTEGER) AS est_tokens_per_task,
+           CAST(SUM(input_tokens) / COUNT(*) AS INTEGER) AS tokens_per_task,
            MAX(duration)           AS slowest,
            TRIM(
              CASE WHEN SUM(tool_errors) > 0 THEN 'tool errors; ' ELSE '' END ||
              CASE WHEN SUM(compactions) > 0 THEN 'compaction; ' ELSE '' END ||
              CASE WHEN SUM(compaction_errors) > 0 THEN 'compaction failures; ' ELSE '' END ||
-             CASE WHEN SUM(est_input_tokens) / COUNT(*) > :high_tokens THEN 'high tokens per task; ' ELSE '' END
-           ) AS flags
+             CASE WHEN SUM(input_tokens) / COUNT(*) > :high_tokens THEN 'high tokens per task; ' ELSE '' END
+           ) AS flags,
+           SUM(CASE WHEN tokens_reported THEN 0 ELSE 1 END) AS estimated_tasks
     FROM {source}
     WHERE {agent_filter}
     GROUP BY agent_name
@@ -80,12 +103,12 @@ SELECT * FROM (
     SELECT * FROM agent_scorecard
     {no_tasks}
 ) s
-ORDER BY LENGTH(flags) DESC, est_tokens_per_task DESC
+ORDER BY LENGTH(flags) DESC, tokens_per_task DESC
 """
 
 # Agents that were changed and have had no tasks since still get a row (with zero tasks).
 NO_TASKS_ROWS = """UNION ALL
-    SELECT c.agent_name, 0::bigint, NULL::numeric, 0::bigint, 0::bigint, 0::bigint, 0, NULL::interval, ''::text
+    SELECT c.agent_name, 0::bigint, NULL::numeric, 0::bigint, 0::bigint, 0::bigint, 0, NULL::interval, ''::text, 0::bigint
     FROM monitor.agent_last_change c
     JOIN aidb.agents a ON a.name = c.agent_name
     WHERE {agent_filter_c}
@@ -110,7 +133,7 @@ versions AS (
     SELECT agent_name, changed_at, reason, n + 1 AS version FROM numbered
 ),
 tasks AS (
-    SELECT t.agent_name, t.started_at, t.rounds, t.est_input_tokens, t.est_output_tokens,
+    SELECT t.agent_name, t.started_at, t.rounds, t.input_tokens, t.output_tokens, t.tokens_reported,
            COALESCE((SELECT MAX(v.version) FROM versions v
                       WHERE v.agent_name = t.agent_name AND v.changed_at <= t.started_at), 1) AS version
     FROM monitor.task_stats t
@@ -119,16 +142,17 @@ tasks AS (
 per_version AS (
     SELECT agent_name, version,
            COUNT(*)                                         AS tasks,
-           ROUND(AVG(est_input_tokens))                     AS avg_input_tokens,
-           ROUND(AVG(est_output_tokens))                    AS avg_output_tokens,
-           ROUND(AVG(est_input_tokens + est_output_tokens)) AS avg_total_tokens,
-           ROUND(AVG(rounds), 1)                            AS avg_rounds
+           ROUND(AVG(input_tokens))                         AS avg_input_tokens,
+           ROUND(AVG(output_tokens))                        AS avg_output_tokens,
+           ROUND(AVG(input_tokens + output_tokens))         AS avg_total_tokens,
+           ROUND(AVG(rounds), 1)                            AS avg_rounds,
+           SUM(CASE WHEN tokens_reported THEN 0 ELSE 1 END) AS estimated_tasks
     FROM tasks
     GROUP BY agent_name, version
 )
 SELECT p.agent_name,
        'v' || p.version AS version,
-       p.tasks, p.avg_input_tokens, p.avg_output_tokens, p.avg_total_tokens, p.avg_rounds,
+       p.tasks, p.estimated_tasks, p.avg_input_tokens, p.avg_output_tokens, p.avg_total_tokens, p.avg_rounds,
        ROUND(100.0 * (p.avg_total_tokens - LAG(p.avg_total_tokens) OVER w)
              / NULLIF(LAG(p.avg_total_tokens) OVER w, 0), 1) AS pct_change,
        v.reason AS change_reason,
@@ -146,7 +170,7 @@ COST_COLS = """COALESCE(cfg.old_config->>'model', a.model) AS model_name,
        ROUND((p.avg_input_tokens * mp.input_per_mtok + p.avg_output_tokens * mp.output_per_mtok) / 1000000.0, 5) AS avg_cost"""
 COST_JOINS = """LEFT JOIN numbered cfg ON cfg.agent_name = p.agent_name AND cfg.n = p.version
 LEFT JOIN aidb.agents a ON a.name = p.agent_name
-LEFT JOIN monitor.model_ids mi ON mi.model_name = COALESCE(cfg.old_config->>'model', a.model)
+LEFT JOIN monitor_feed.model_ids() mi ON mi.model_name = COALESCE(cfg.old_config->>'model', a.model)
 LEFT JOIN monitor.model_prices mp ON mp.model_id = mi.model_id"""
 NO_COST_COLS = "NULL::text AS model_name, NULL::text AS model_id, NULL::numeric AS avg_cost"
 
@@ -158,7 +182,7 @@ def performance_sql(with_cost: bool) -> str:
 MODEL_NAME = "claude_model_agent_monitor"
 REVIEWER_NAME = "agent_reviewer"
 VIEW_NAMES = ["monitor.agent_config_history", "monitor.agent_reviews", "monitor.model_prices",
-              "monitor.model_ids", "monitor.task_stats",
+              "monitor.task_stats",
               "monitor.agent_last_change", "monitor.recent_task_stats", "monitor.agent_scorecard",
               "monitor.error_summary", "monitor.repeated_calls", "monitor.tool_usage"]
 REVIEW_TOOL_NAMES = ["review_scorecard", "review_errors", "review_retries",
@@ -220,13 +244,9 @@ SETUP_OBJECT_STATEMENTS = [
     """INSERT INTO monitor.model_prices (model_id, input_per_mtok, output_per_mtok, source)
 VALUES ('claude-sonnet-5', 2, 10, 'Anthropic pricing page, Nov 2026')
 ON CONFLICT (model_id) DO NOTHING""",
-    """CREATE OR REPLACE VIEW monitor.model_ids AS
-SELECT m.name AS model_name, m.provider,
-       CASE WHEN o ~ '^config=[{].*[}]$' THEN CAST(SUBSTRING(o FROM 8) AS JSONB)->>'model' END AS model_id
-FROM aidb.models m
-CROSS JOIN LATERAL UNNEST(m.options) AS o
-WHERE o LIKE 'config=%'""",
+    DROP_VIEWS_SQL,
     CREATE_VIEW_SQL.strip(),
+    VIEWS_COMMENT_SQL,
     """CREATE OR REPLACE VIEW monitor.agent_last_change AS
 SELECT agent_name, MAX(changed_at) AS changed_at
 FROM monitor.agent_config_history
@@ -249,8 +269,10 @@ SELECT agent_name,
          CASE WHEN SUM(tool_errors) > 0 THEN 'tool errors; ' ELSE '' END ||
          CASE WHEN SUM(compactions) > 0 THEN 'compaction; ' ELSE '' END ||
          CASE WHEN SUM(compaction_errors) > 0 THEN 'compaction failures; ' ELSE '' END ||
-         CASE WHEN SUM(est_input_tokens) / COUNT(*) > 5000 THEN 'high tokens per task; ' ELSE '' END
-       ) AS flags
+         CASE WHEN SUM(input_tokens) / COUNT(*) > 5000 THEN 'high tokens per task; ' ELSE '' END
+       ) AS flags,
+       CAST(SUM(input_tokens) / COUNT(*) AS INTEGER) AS tokens_per_task,
+       SUM(CASE WHEN tokens_reported THEN 0 ELSE 1 END) AS estimated_tasks
 FROM monitor.recent_task_stats
 WHERE agent_name IS NOT NULL
 GROUP BY agent_name""",
@@ -268,8 +290,8 @@ FROM (
   FROM (
     SELECT a.name AS agent_name, l.action_type, l.created_at,
            l.response_payload->>'error' AS message
-    FROM aidb_internal.action_log l
-    JOIN aidb.agents a ON a.id = l.agent_id
+    FROM monitor_feed.action_log() l
+    JOIN monitor_feed.agents() a ON a.id = l.agent_id
     LEFT JOIN monitor.agent_last_change lc ON lc.agent_name = a.name
     WHERE l.status = 'ERROR' AND (lc.changed_at IS NULL OR l.created_at >= lc.changed_at)
   ) m
@@ -280,7 +302,7 @@ SELECT t.agent_name, l.task_id,
        l.request_payload->>'tool_name' AS tool_name,
        CAST(l.request_payload->'arguments' AS TEXT) AS arguments,
        COUNT(*) AS times
-FROM aidb_internal.action_log l
+FROM monitor_feed.action_log() l
 JOIN monitor.recent_task_stats t ON t.task_id = l.task_id
 WHERE l.action_type = 'tool_call' AND t.agent_name IS NOT NULL
 GROUP BY t.agent_name, l.task_id, l.request_payload->>'tool_name', CAST(l.request_payload->'arguments' AS TEXT)
@@ -292,10 +314,10 @@ SELECT a.name AS agent_name,
        SUM(CASE WHEN r.status = 'ERROR' THEN 1 ELSE 0 END) AS errors,
        CAST(AVG(LENGTH(CAST(r.response_payload AS TEXT))) / 4 AS INTEGER) AS avg_response_tokens,
        CAST(MAX(LENGTH(CAST(r.response_payload AS TEXT))) / 4 AS INTEGER) AS max_response_tokens
-FROM aidb_internal.action_log c
-JOIN aidb.agents a ON a.id = c.agent_id
+FROM monitor_feed.action_log() c
+JOIN monitor_feed.agents() a ON a.id = c.agent_id
 LEFT JOIN monitor.agent_last_change lc ON lc.agent_name = a.name
-LEFT JOIN aidb_internal.action_log r
+LEFT JOIN monitor_feed.action_log() r
        ON r.task_id = c.task_id
       AND r.action_type = 'tool_response'
       AND r.response_payload->>'call_id' = c.request_payload->>'call_id'
@@ -314,8 +336,8 @@ BEGIN
 
     PERFORM aidb.create_sql_tool(
       name => v_name,
-      description => 'Health summary per agent, counting only tasks since the agent was last changed: tasks, average rounds, tool errors, compactions, compaction failures, estimated input tokens per task, slowest task, and a flags column that names the problems. Start here to find which agents need attention.',
-      sql_statement => 'SELECT * FROM monitor.agent_scorecard WHERE agent_name ILIKE ${agent_pattern} ORDER BY LENGTH(flags) DESC, est_tokens_per_task DESC LIMIT 25',
+      description => 'Health summary per agent, counting only tasks since the agent was last changed: tasks, average rounds, tool errors, compactions, compaction failures, input tokens per task (tokens_per_task: as reported by the model provider, estimated for the estimated_tasks where it reported none; est_tokens_per_task is always the estimate), slowest task, and a flags column that names the problems. Start here to find which agents need attention.',
+      sql_statement => 'SELECT * FROM monitor.agent_scorecard WHERE agent_name ILIKE ${agent_pattern} ORDER BY LENGTH(flags) DESC, tokens_per_task DESC LIMIT 25',
       params => aidb.tool_params(
         aidb.tool_param('agent_pattern', 'TEXT', 'An agent name, or a pattern with % as a wildcard. Use % for all agents.')
       )
@@ -464,6 +486,9 @@ BEGIN
       read_only => false
     );
 
+    -- Both tools change the agent through aidb.update_agent, which checks the change (tool names, owner) like for
+    -- any other caller. Each is one MERGE that also records the outcome in monitor.agent_config_history; AIDB runs a
+    -- tool as WITH t AS (<statement>), so the statement itself has to be the write.
     v_name := 'apply_agent_change';
     IF EXISTS (SELECT NULL FROM aidb.sql_tool_registry WHERE name = v_name) THEN
         PERFORM aidb.delete_tool(v_name);
@@ -471,25 +496,41 @@ BEGIN
 
     PERFORM aidb.create_sql_tool(
       name => v_name,
-      description => 'Make one small edit to an agent. Requires the history_id returned by save_agent_snapshot for the same agent. To change the instructions, pass old_text, an exact short snippet copied from the current instructions, and new_text, what replaces it (an empty new_text deletes the snippet). To add a line to the end of the instructions, leave old_text empty and pass the line as new_text. To change the tools, pass new_tools as the full comma-separated list of tool names with no spaces. Leave a parameter as an empty string when it is not part of this edit. Call once per edit. No rows means nothing changed, usually because old_text was not found exactly.',
-      sql_statement => 'UPDATE aidb.agents
-           SET instructions = CASE
-                   WHEN NULLIF(${old_text}, '''') IS NOT NULL THEN REPLACE(instructions, ${old_text}, ${new_text})
-                   WHEN NULLIF(${new_text}, '''') IS NOT NULL THEN instructions || chr(10) || ${new_text}
-                   ELSE instructions END,
-               tools        = CASE WHEN NULLIF(${new_tools}, '''') IS NULL THEN tools
-                                   ELSE string_to_array(${new_tools}, '','') END,
-               updated_at   = now()
-         WHERE name = ${agent_name}
-           AND name NOT IN (''agent_reviewer'', ''agent_modifier'')
-           AND (NULLIF(${old_text}, '''') IS NULL OR POSITION(${old_text} IN instructions) > 0)
-           AND EXISTS (SELECT NULL FROM monitor.agent_config_history h
-                        WHERE h.history_id = CAST(${history_id} AS BIGINT) AND h.agent_name = ${agent_name})
-        RETURNING name AS agent_name',
+      description => 'Make one small edit to an agent. Requires the history_id returned by save_agent_snapshot for the same agent. To change the instructions, pass old_text, an exact short snippet copied from the current instructions, and new_text, what replaces it (an empty new_text deletes the snippet). To add a line to the end of the instructions, leave old_text empty and pass the line as new_text. To change the tools, pass new_tools as the full comma-separated list of tool names with no spaces. Leave a parameter as an empty string when it is not part of this edit. Call once per edit. No rows means nothing changed, usually because old_text was not found exactly, or was found more than once: then copy a longer snippet. A row with an error means AIDB rejected the edit, for example a tool name that does not exist: nothing changed, and if no earlier edit used this history_id the snapshot is discarded.',
+      sql_statement => 'MERGE INTO monitor.agent_config_history h
+        USING (SELECT e.*,
+                      (SELECT u.error FROM aidb.update_agent(e.name, instructions => e.instructions,
+                                                             tools => e.tools) u) AS error
+                 FROM (SELECT a.name, s.history_id, a.instructions AS old_instructions, a.tools AS old_tools,
+                              CASE WHEN NULLIF(${old_text}, '''') IS NOT NULL
+                                   THEN OVERLAY(a.instructions PLACING ${new_text}
+                                                FROM POSITION(${old_text} IN a.instructions) FOR LENGTH(${old_text}))
+                                   WHEN NULLIF(${new_text}, '''') IS NOT NULL
+                                   THEN a.instructions || chr(10) || ${new_text}
+                              END AS instructions,
+                              string_to_array(NULLIF(${new_tools}, ''''), '','') AS tools
+                         FROM aidb.agents a
+                         JOIN monitor.agent_config_history s
+                           ON s.history_id = CAST(${history_id} AS BIGINT) AND s.agent_name = a.name
+                        WHERE a.name = ${agent_name}
+                          AND a.name NOT IN (''agent_reviewer'', ''agent_modifier'')
+                          AND (NULLIF(${old_text}, '''') IS NULL
+                               OR (POSITION(${old_text} IN a.instructions) > 0
+                                   AND POSITION(${old_text} IN SUBSTR(a.instructions,
+                                                POSITION(${old_text} IN a.instructions) + 1)) = 0))) e) p
+           ON h.history_id = p.history_id
+         WHEN MATCHED AND p.error IS NULL THEN
+              UPDATE SET new_config = jsonb_build_object(
+                  ''instructions'', COALESCE(p.instructions, p.old_instructions),
+                  ''tools'', to_jsonb(COALESCE(p.tools, p.old_tools)))
+         -- a rejected first edit changed nothing, so its snapshot must not start a new "since last change" window
+         WHEN MATCHED AND h.new_config IS NULL THEN DELETE
+         WHEN MATCHED THEN UPDATE SET new_config = h.new_config
+        RETURNING p.name AS agent_name, p.error',
       params => aidb.tool_params(
         aidb.tool_param('agent_name', 'TEXT', 'The exact name of the agent to change.'),
         aidb.tool_param('history_id', 'TEXT', 'The history_id number returned by save_agent_snapshot for this agent, for example 7. Never guess it; call save_agent_snapshot first.'),
-        aidb.tool_param('old_text', 'TEXT', 'An exact snippet of the current instructions to replace, or an empty string to append to the end.'),
+        aidb.tool_param('old_text', 'TEXT', 'An exact snippet of the current instructions to replace, long enough to occur only once, or an empty string to append to the end.'),
         aidb.tool_param('new_text', 'TEXT', 'The replacement text, or the line to append. An empty string deletes the snippet.'),
         aidb.tool_param('new_tools', 'TEXT', 'Full comma-separated list of tool names with no spaces, or an empty string to leave the tools unchanged.')
       ),
@@ -503,16 +544,29 @@ BEGIN
 
     PERFORM aidb.create_sql_tool(
       name => v_name,
-      description => 'Undo a change by restoring the instructions and tools saved in a history row. No rows means the history_id was not found.',
-      sql_statement => 'UPDATE aidb.agents a
-           SET instructions = h.old_config->>''instructions'',
-               tools        = CASE WHEN jsonb_typeof(h.old_config->''tools'') = ''array''
-                                   THEN ARRAY(SELECT jsonb_array_elements_text(h.old_config->''tools''))
-                                   ELSE NULL END,
-               updated_at   = now()
-          FROM monitor.agent_config_history h
-         WHERE h.history_id = CAST(${history_id} AS BIGINT) AND a.name = h.agent_name
-        RETURNING a.name AS agent_name',
+      description => 'Undo a change by restoring the instructions and tools saved in a history row. The configuration it replaces is saved as a new history row (new_history_id), so the revert can be undone too. No rows means the history_id or its agent was not found. A row with an error means AIDB rejected the restore, and nothing changed.',
+      sql_statement => 'MERGE INTO monitor.agent_config_history h
+        USING (SELECT t.*,
+                      -- unchanged tools are left out, so a tool deleted since then does not block the instructions
+                      (SELECT u.error FROM aidb.update_agent(t.agent_name, instructions => t.instructions,
+                           tools => NULLIF(t.tools, COALESCE(t.current_tools, ARRAY[]::text[]))) u) AS error
+                 FROM (SELECT s.history_id, s.agent_name, to_jsonb(a) AS current_config, a.tools AS current_tools,
+                              s.old_config->>''instructions'' AS instructions,
+                              CASE WHEN jsonb_typeof(s.old_config->''tools'') = ''array''
+                                   THEN ARRAY(SELECT jsonb_array_elements_text(s.old_config->''tools''))
+                                   ELSE ARRAY[]::text[] END AS tools
+                         FROM monitor.agent_config_history s
+                         JOIN aidb.agents a ON a.name = s.agent_name
+                        WHERE s.history_id = CAST(${history_id} AS BIGINT)) t) p
+           -- matches only on an error, so a successful restore inserts its new history row
+           ON h.history_id = p.history_id AND p.error IS NOT NULL
+         WHEN NOT MATCHED THEN
+              INSERT (agent_name, action, old_config, new_config, reason)
+              VALUES (p.agent_name, ''revert'', p.current_config,
+                      jsonb_build_object(''instructions'', p.instructions, ''tools'', to_jsonb(p.tools)),
+                      ''Revert of change '' || p.history_id)
+         WHEN MATCHED THEN UPDATE SET reason = h.reason
+        RETURNING p.agent_name, p.error, CASE WHEN p.error IS NULL THEN h.history_id END AS new_history_id',
       params => aidb.tool_params(
         aidb.tool_param('history_id', 'TEXT', 'The history_id number from monitor.agent_config_history, for example 7.')
       ),
@@ -524,7 +578,7 @@ $do$;
 
 SETUP_MODIFIER_SQL = agent_sql(
     'agent_modifier',
-    'You apply recommended changes to AIDB agents. You change only the agent named in the request, and only what the recommendation says. Keep everything you write short.\n\nSteps:\n1. Call review_agent_config for the agent to read its current instructions and tools. Do not skip this step.\n2. Decide the smallest edits that implement the recommendation. Never rewrite the whole instructions. Each instruction edit replaces one short snippet, a line or two, copied exactly from the current instructions, or adds one line at the end. A tool change is the full new comma-separated list with no spaces.\n3. Call save_agent_snapshot once, with the agent name and a reason of one or two short sentences. Note the history_id it returns; you must have it before step 4, never invent one.\n4. Call apply_agent_change once per edit, with the same agent name and that history_id. Use an empty string for any parameter that is not part of that edit.\n5. Reply in three lines or fewer: the agent name, the history_id, and what changed.\n\nIf a call returns an error or no rows, report it and stop. Do not retry. Never change instructions or tools that the recommendation does not mention. Only call revert_agent when the request asks for a revert, and give it the history_id from the request.\n',
+    'You apply recommended changes to AIDB agents. You change only the agent named in the request, and only what the recommendation says. Keep everything you write short.\n\nSteps:\n1. Call review_agent_config for the agent to read its current instructions and tools. Do not skip this step.\n2. Decide the smallest edits that implement the recommendation. Never rewrite the whole instructions. Each instruction edit replaces one short snippet, a line or two, copied exactly from the current instructions and occurring there only once, or adds one line at the end. A tool change is the full new comma-separated list with no spaces.\n3. Call save_agent_snapshot once, with the agent name and a reason of one or two short sentences. Note the history_id it returns; you must have it before step 4, never invent one.\n4. Call apply_agent_change once per edit, with the same agent name and that history_id. Use an empty string for any parameter that is not part of that edit.\n5. Reply in three lines or fewer: the agent name, the history_id, and what changed.\n\nIf a call returns an error or no rows, report it and stop. Do not retry. Never change instructions or tools that the recommendation does not mention. Only call revert_agent when the request asks for a revert, and give it the history_id from the request.\n',
     ['review_agent_config', 'save_agent_snapshot', 'apply_agent_change', 'revert_agent'])
 
 def script(statements: list[str]) -> str:
@@ -551,7 +605,7 @@ GROUP_TITLES = [("model", "Model"), ("objects", "Schema, table, views"),
 
 LITELLM_PRICES_URL = "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json"
 # Models the agents use now, plus the models earlier versions used (from the saved configurations)
-USED_MODELS_SQL = """SELECT DISTINCT mi.model_id FROM monitor.model_ids mi
+USED_MODELS_SQL = """SELECT DISTINCT mi.model_id FROM monitor_feed.model_ids() mi
 WHERE mi.model_id IS NOT NULL
   AND mi.model_name IN (SELECT model FROM aidb.agents
                         UNION SELECT old_config->>'model' FROM monitor.agent_config_history)

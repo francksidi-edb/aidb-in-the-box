@@ -1,4 +1,5 @@
 """Shared helpers: database engine, JSON responses, and background jobs for slow steps."""
+import contextvars
 import datetime
 import decimal
 import functools
@@ -9,27 +10,51 @@ import time
 import uuid
 
 import pandas as pd
-from flask import Blueprint, Response
+from flask import Blueprint, Response, request
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import URL
 
 bp = Blueprint("jobs", __name__)
-_engine = None
+_engines = {}
+_lock = threading.Lock()
+
+# Which database user a request uses: "app" (AIBOX_DB_USER, demo_user in the container) unless its blueprint
+# picked another with db_role(), such as "monitor" for Token Boss (AIBOX_MONITOR_USER, demo_monitor).
+DB_ROLE = contextvars.ContextVar("db_role", default="app")
+ROLE_ENV = {"app": "AIBOX_DB", "monitor": "AIBOX_MONITOR"}
+_blueprint_roles = {}
+
+
+def db_role(blueprint, role):
+    """Run the requests of `blueprint` (and the jobs they start) as database role `role`."""
+    if role not in ROLE_ENV:
+        raise ValueError(f"Unknown database role {role!r}; known: {', '.join(ROLE_ENV)}")
+    _blueprint_roles[blueprint.name] = role
+
+
+@bp.before_app_request
+def _pick_db_role():
+    DB_ROLE.set(_blueprint_roles.get(request.blueprint, "app"))
 
 
 def get_engine():
-    """One pooled connection source. Uses the PGHOST / PGPORT / PGUSER / PGPASSWORD / PGDATABASE variables
-    that docker/entrypoint.sh sets. AUTOCOMMIT so long aidb calls are not wrapped in one transaction."""
-    global _engine
-    if _engine is None:
-        host = os.getenv("PGHOST") or None
-        _engine = create_engine(
-            URL.create("postgresql+psycopg2", username=os.getenv("PGUSER", "postgres"),
-                       password=os.getenv("PGPASSWORD") or None, host=host,
-                       port=int(os.getenv("PGPORT", "5432")) if host else None,
-                       database=os.getenv("PGDATABASE", "aidb")),
-            pool_pre_ping=True, isolation_level="AUTOCOMMIT")
-    return _engine
+    """One pooled connection source per role. Uses PGHOST / PGPORT / PGDATABASE, and <prefix>_USER /
+    <prefix>_PASSWORD for the role (PGUSER / PGPASSWORD when <prefix>_USER is not set), which docker/entrypoint.sh
+    sets. AUTOCOMMIT so long aidb calls are not wrapped in one transaction."""
+    role = DB_ROLE.get()
+    with _lock:
+        if role not in _engines:
+            prefix, host = ROLE_ENV[role], os.getenv("PGHOST") or None
+            if os.getenv(f"{prefix}_USER"):
+                user, password = os.getenv(f"{prefix}_USER"), os.getenv(f"{prefix}_PASSWORD")
+            else:
+                user, password = os.getenv("PGUSER", "postgres"), os.getenv("PGPASSWORD")
+            _engines[role] = create_engine(
+                URL.create("postgresql+psycopg2", username=user, password=password or None, host=host,
+                           port=int(os.getenv("PGPORT", "5432")) if host else None,
+                           database=os.getenv("PGDATABASE", "aidb")),
+                pool_pre_ping=True, isolation_level="AUTOCOMMIT")
+        return _engines[role]
 
 
 def query(sql, params=None):
@@ -93,8 +118,9 @@ def api(fn):
 
 # ---- background jobs: the page starts one, then polls /api/jobs/<id> ----
 class Job:
-    def __init__(self):
+    def __init__(self, args=()):
         self.id = uuid.uuid4().hex[:12]
+        self.args = args       # for a keyed job: what fn was started with, so a caller can tell whether it got its own
         self.lines = []
         self.progress = None   # 0..1 or None
         self.done = False
@@ -109,23 +135,28 @@ class Job:
 
 JOBS = {}
 RUNNING = {}   # key -> the job started with that key
-_lock = threading.Lock()
 
 
 def start_job(fn, *args, key=None):
-    """Run fn(job, *args) in a thread. With a key, only one such job runs at a time: while it runs, starting
-    another returns the running job instead (for example a second browser tab pressing the same button)."""
+    """Run fn(job, *args) in a thread, as the database role of the request that started it. With a key, only one
+    such job runs at a time: while it runs, starting another returns the running job instead (for example a
+    second browser tab pressing the same button)."""
     with _lock:
         if key and key in RUNNING and not RUNNING[key].done:
             return RUNNING[key]
-        job = Job()
+        job = Job(args if key else ())  # unkeyed jobs keep nothing (setup_all_job's argument is an API key)
         for k in [k for k, j in JOBS.items() if j.done and time.time() - j.t1 > 3600]:
             del JOBS[k]
+        for k in [k for k, j in RUNNING.items() if j.done]:
+            del RUNNING[k]
         JOBS[job.id] = job
         if key:
             RUNNING[key] = job
 
+    role = DB_ROLE.get()
+
     def run():
+        DB_ROLE.set(role)  # the thread starts with a fresh context
         try:
             job.result = fn(job, *args)
         except Exception as e:  # noqa: BLE001

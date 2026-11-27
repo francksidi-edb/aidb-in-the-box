@@ -23,7 +23,17 @@ AU.mounts.tokenboss=async el=>{
       ${s.conn_error?AU.err('Cannot reach the database: '+s.conn_error):''}`;
   }
   const tab=()=>({agents,performance,history,setup}[TB.tab])();
-  const notReady=()=>AU.msg('info','The monitor is not ready yet. Run the steps on the Setup tab, and check that the database user can read aidb_internal.');
+  const notReady=()=>AU.msg('info','The monitor is not ready yet. Run the steps on the Setup tab, and check that the database user may call the monitor_feed functions (docker/roles.sql).');
+
+  /* A warning when some token counts are estimates: for how many tasks, and which data AIDB was missing. */
+  function tokenWarn(t){
+    if(!t||!t.estimated)return '';
+    const why=t.reasons.map(r=>`${esc(r.note)} (${r.tasks} task${r.tasks===1?'':'s'})`).join('; ');
+    const otel=t.otel_client!=='database'?` Token Boss's session sees <code>aidb.otel_client</code> = <code>${esc(t.otel_client||'not set')}</code>, so AIDB does not store spans in <code>aidb_otel.traces</code>. Set it to <code>database</code> to get the real counts for new tasks.`
+      :t.storage_format==='binary'?` <code>aidb.otel_client_storage_format</code> is <code>binary</code>, so the spans have no JSON payload to read the counts from. Set it to <code>json</code> to get the real counts for new tasks.`:'';
+    return AU.msg('warn',`${t.estimated===t.tasks?'All':t.estimated+' of'} ${t.tasks} task(s) use estimated token counts (characters ÷ 4), because AIDB has no token usage reported by the model provider for them: ${why}.${otel}`);
+  }
+  const approx=(n,v)=>(n?`<span title="${n} task(s) with estimated token counts">≈ </span>`:'')+AU.cell(v);
 
   /* ------------------------------------------------------------ Agents */
   function agents(){
@@ -31,7 +41,7 @@ AU.mounts.tokenboss=async el=>{
     body().innerHTML=`<div class="frm" style="grid-template-columns:2fr 1fr 1fr;align-items:end">
       <label>Agent name<input id="tbsearch" value="${esc(f.search)}" placeholder="Wildcards: * and ?   for example demo_agent_cc*" title="* matches any text and ? matches one character. Without a wildcard, any agent whose name contains the text is shown."></label>
       <label class="chk" style="margin:0 0 9px"><input type="checkbox" id="tbdel" ${f.deleted?'checked':''}> Show deleted agents</label>
-      <label>High tokens per task<input type="number" id="tbhigh" min="0" step="500" value="${f.high}" title="Agents above this estimated input tokens per task get the 'high tokens' flag."></label></div>
+      <label>High tokens per task<input type="number" id="tbhigh" min="0" step="500" value="${f.high}" title="Agents above this many input tokens per task get the 'high tokens' flag."></label></div>
       <div class="toolbar"><button class="btn alt" data-act="reload">↻ Refresh</button>
         <label class="chk" style="margin:0"><input type="checkbox" id="tbsince" ${f.since?'checked':''}> Only count tasks since each agent's last change</label></div>
       <div id="tbscore">Loading…</div><div id="tbreview"></div>`;
@@ -49,8 +59,9 @@ AU.mounts.tokenboss=async el=>{
     const d=TB.score,t=$q('#tbscore');if(!d||!t)return;
     const cols=['agent_name',{k:'review',label:' ',html:r=>r.can_review?`<button class="lnk" data-act="review" data-a="${esc(r.agent_name)}" title="Ask the reviewer agent for recommendations for this agent.">📝 Review</button>`:''},
       {k:'modified',html:r=>r.modified?`<button class="lnk" data-act="hist" data-a="${esc(r.agent_name)}" style="white-space:normal;text-align:left;max-width:170px" title="Open this agent's changes on the History tab.">${esc(r.modified)}</button>`:AU.cell(null)},
-      'tasks','avg_rounds','tool_errors','compactions','compaction_errors','est_tokens_per_task','slowest_s','flags'];
-    t.innerHTML=(!d.views_ok?AU.msg('info','Counting all tasks. Run step 2 (Schema, table and views) on the Setup tab to count only the tasks since each agent\'s last change.'):'')+
+      'tasks','avg_rounds','tool_errors','compactions','compaction_errors',
+      {k:'tokens_per_task',html:r=>approx(r.estimated_tasks,r.tokens_per_task)},'slowest_s','flags'];
+    t.innerHTML=(!d.views_ok?AU.msg('info','Counting all tasks. Run step 2 (Schema, table and views) on the Setup tab to count only the tasks since each agent\'s last change.'):'')+tokenWarn(d.tokens)+
       (d.rows.length?`<p><b>${d.rows.length}</b> agent(s), <b>${d.flagged}</b> with flags</p>${AU.table(cols,d.rows,{hl:r=>TB.review&&r.agent_name===TB.review.agent})}
         <p style="color:var(--muted);font-size:13px">Click a column header to sort. Click Review next to an agent to get recommendations below the table. Click a Modified entry to see that agent's history.</p>`
         :AU.msg('info','No agents match. Try a different search, or tick Show deleted agents.'));
@@ -108,13 +119,15 @@ AU.mounts.tokenboss=async el=>{
     if(!d.rows.length){t.innerHTML=AU.msg('info','No agent has been changed and run again yet. Apply a recommendation on the Agents tab and run the agent, or turn on the switch above to see every agent.');return;}
     t.innerHTML=`<p><b>${d.agents}</b> agent(s), <b>${d.rows.length}</b> version(s)</p>
       ${!d.costs_ok?AU.msg('info','Costs are not shown yet. Run step 2 on the Setup tab to add the model prices.'):d.unpriced.length?AU.msg('warn','No price for: '+esc(d.unpriced.join(', '))+'. Add it under Model prices on the Setup tab to see costs.'):''}
+      ${tokenWarn(d.tokens)}
       <div class="panel pad">${chart(d.rows)}</div>
       <p style="color:var(--muted);font-size:13px">v1 is the configuration before any recorded change, and each change or undo starts the next version. Bars are split into input and output tokens, and the number above a bar is its version, with the estimated cost per task above it when the model has a price. An asterisk means fewer than ${LOW} tasks, so treat it with care. Different versions may have been tested with different questions.</p>
       <div class="md panel pad" style="margin:12px 0"><p><b>What are input and output tokens?</b> A token is a small chunk of text, roughly three-quarters of a word, and AI providers charge by the token.</p>
       <ul><li><b>Input</b> is everything the agent reads before it answers: your question, its standing instructions, the descriptions of its tools, and whatever the tools send back, such as database results.</li>
       <li><b>Output</b> is what the agent writes back: its answer, plus the requests it makes to tools.</li></ul>
       <p>Input usually outweighs output by a lot. The agent re-reads its instructions and earlier results on every round, so a long set of instructions or a large tool result is paid for again each time. That is why shorter instructions and smaller tool results save the most.</p></div>
-      ${AU.table([ 'agent_name','version','tasks',{k:'model_id'},'avg_input_tokens','avg_output_tokens','avg_total_tokens',
+      ${AU.table([ 'agent_name','version','tasks',{k:'model_id'},{k:'avg_input_tokens',html:r=>approx(r.estimated_tasks,r.avg_input_tokens)},
+        {k:'avg_output_tokens',html:r=>approx(r.estimated_tasks,r.avg_output_tokens)},{k:'avg_total_tokens',html:r=>approx(r.estimated_tasks,r.avg_total_tokens)},
         {k:'avg_cost',html:r=>AU.cell(money(r.avg_cost))},{k:'pct_change',label:'Pct Change',html:r=>AU.cell(r.pct_change==null?'':(r.pct_change>0?'+':'')+Math.round(r.pct_change)+'%')},'avg_rounds','change_reason'],d.rows)}`;
   }
   /* Grouped, stacked bars as inline SVG: one group per agent, one bar per version, split into input and output. */
@@ -136,7 +149,7 @@ AU.mounts.tokenboss=async el=>{
       });
       g+=`<text transform="translate(${L+i*gw+gw/2},${H-B+14}) rotate(-30)" text-anchor="end" font-size="12" fill="currentColor">${esc(a.length>34?a.slice(0,33)+'…':a)}</text>`;
     });
-    g+=`<text transform="translate(14,${T+ph/2}) rotate(-90)" text-anchor="middle" font-size="12" fill="currentColor" opacity=".8">Average tokens per task (estimated)</text>
+    g+=`<text transform="translate(14,${T+ph/2}) rotate(-90)" text-anchor="middle" font-size="12" fill="currentColor" opacity=".8">Average tokens per task</text>
       <rect x="${L}" y="${H-14}" width="11" height="11" fill="#4c78a8"/><text x="${L+16}" y="${H-4}" font-size="12" fill="currentColor">Input</text>
       <rect x="${L+70}" y="${H-14}" width="11" height="11" fill="#f58518"/><text x="${L+86}" y="${H-4}" font-size="12" fill="currentColor">Output</text>`;
     return `<div style="overflow-x:auto"><svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:640px;height:auto;color:var(--fg)" role="img" aria-label="Average tokens per task by agent and version">${g}</svg></div>`;
@@ -151,13 +164,13 @@ AU.mounts.tokenboss=async el=>{
     if(!d.available){b.innerHTML=AU.msg('info','The history table does not exist yet. Run the steps on the Setup tab.');return;}
     if(!d.choices.length){b.innerHTML=AU.msg('info','There are no agents yet.');return;}
     TB.hist.agent=d.agent;TB.hist.data=d;
-    b.innerHTML=`<p style="color:var(--muted)">Every change the modifier agent or an undo made to an agent, the reviews behind them, and whether things got better afterwards. Token counts are estimates (characters ÷ 4).</p>
-      ${TB.flash.history?TB.flash.history:''}
+    b.innerHTML=`<p style="color:var(--muted)">Every change the modifier agent or an undo made to an agent, the reviews behind them, and whether things got better afterwards.</p>
+      ${TB.flash.history?TB.flash.history:''}${tokenWarn(d.tokens)}
       <div class="frm" style="grid-template-columns:minmax(220px,420px)"><label>Agent<select id="tbhagent">${d.choices.map(c=>`<option value="${esc(c.name)}" ${c.name===d.agent?'selected':''}>${esc(c.label)}</option>`).join('')}</select></label></div>
       ${!d.exists?AU.msg('warn',`The agent ${esc(d.agent)} no longer exists, so its history is read-only.`)
         :`<details><summary>Current configuration</summary><p><b>Tools:</b> ${esc(d.current.tools.join(', ')||'none')}</p><pre class="code">${esc(d.current.instructions||'(no instructions)')}</pre></details>`}
       ${d.changes.length?`<p style="margin-top:14px"><b>${d.changes.length}</b> recorded change(s) for <b>${esc(d.agent)}</b></p>
-        ${AU.table([{k:'details',label:'Details',html:r=>`<button class="lnk" data-act="detail" data-id="${r.id}">🔍 View</button>`},{k:'when'},{k:'action'},{k:'reason'},{k:'tasks',label:'Tasks (Before → After)'},{k:'tokens',label:'Est Tokens Per Task'},{k:'errors',label:'Tool Errors'}],d.changes,{hl:r=>r.id===TB.hist.sel})}
+        ${AU.table([{k:'details',label:'Details',html:r=>`<button class="lnk" data-act="detail" data-id="${r.id}">🔍 View</button>`},{k:'when'},{k:'action'},{k:'reason'},{k:'tasks',label:'Tasks (Before → After)'},{k:'tokens',label:'Input Tokens Per Task',html:r=>approx(r.estimated_tasks,r.tokens)},{k:'errors',label:'Tool Errors'}],d.changes,{hl:r=>r.id===TB.hist.sel})}
         <p style="color:var(--muted);font-size:13px">Before and after compare the tasks run since the previous change with those run since this one. A lower tokens or errors number after a change means it helped.</p>`
         :AU.msg('info',`No changes have been applied to ${esc(d.agent)}.`)}
       <div id="tbdetail"></div>

@@ -8,8 +8,11 @@ from .common import api, get_engine, reply
 
 bp = Blueprint("converse", __name__, url_prefix="/api/converse")
 
-# Override if your aidb version stores agents elsewhere.
-AGENT_LIST_SQL = os.getenv("AGENT_LIST_SQL", "SELECT name FROM aidb.agents ORDER BY name")
+# Only agents the app's database user may act for: another role's agents usually depend on that role's private
+# model credentials and tables. Override if your aidb version stores agents elsewhere.
+AGENT_LIST_SQL = os.getenv("AGENT_LIST_SQL", "SELECT a.name FROM aidb.agents a "
+                                             "JOIN pg_roles r ON r.rolname = a.owner_role "  # skips dropped roles
+                                             "WHERE pg_has_role(current_user, r.oid, 'MEMBER') ORDER BY a.name")
 
 
 @bp.get("/agents")

@@ -11,10 +11,8 @@ from urllib.parse import quote
 
 import pandas as pd
 from flask import Blueprint, request, send_from_directory
-from sqlalchemy import text
 
-from .common import (api, db_error, execute, get_engine, query, records, relation_exists, reply, start_job,
-                     table)
+from .common import api, db_error, execute, query, records, relation_exists, reply, start_job, table
 
 bp = Blueprint("validation", __name__, url_prefix="/api/validation")
 
@@ -91,10 +89,7 @@ def delete_documents(names):
 
 def run_pipeline():
     remove_checkpoint_dirs()
-    # pgfs must be loaded in this session so pgfs.allowed_local_fs_paths is populated
-    with get_engine().connect() as c:
-        c.execute(text("SELECT pgfs.pgfs_version()"))
-        c.execute(text("SELECT aidb.run_pipeline(:p)"), {"p": PIPELINE})
+    execute("SELECT aidb.run_pipeline(:p)", {"p": PIPELINE})  # pgfs is preloaded in every session (roles.sql)
     purge_checkpoint_rows()
 
 

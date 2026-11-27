@@ -10,14 +10,23 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       AIBOX_ALLOWED_HOSTS: ${AIBOX_ALLOWED_HOSTS:-}   # extra host names for the app besides localhost / 127.0.0.1
       JUPYTER_TOKEN: ${JUPYTER_TOKEN:-}               # empty: a new Jupyter token on every start
+      AIBOX_TESTED_AIDB_VERSION: ${AIBOX_TESTED_AIDB_VERSION:-}   # empty: the version in box_server.py
     ports:
       - "127.0.0.1:5432:5432"   # Postgres
       - "127.0.0.1:8888:8888"   # Jupyter
       - "127.0.0.1:8765:8765"   # MCP endpoint
       - "127.0.0.1:8650:8650"   # AI in the Box (Flask)
+    healthcheck:
+      # healthy once the app answers and reaches the database; the first start takes a few minutes
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:8650/api/health"]
+      interval: 10s   # start_interval would need Docker 25
+      start_period: 15m
+      timeout: 10s
+      retries: 3
     volumes:
       - pgdata:/var/lib/pgsql/18/data
       - pgfs:/tmp/pgfs   # documents for pgfs: the sample PDFs, uploads and downloads (filled from the image on first start)
+      - notebooks:/var/lib/pgsql/notebooks   # Jupyter's folder: the notebooks, with your edits (entrypoint.sh updates the rest)
 
 secrets:
   edb_token:
@@ -26,3 +35,4 @@ secrets:
 volumes:
   pgdata:
   pgfs:
+  notebooks:

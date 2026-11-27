@@ -4,7 +4,7 @@ cd "$(dirname "$0")"
 
 PROFILE_URL="https://www.enterprisedb.com/accounts/profile"
 
-if [ -z "${EDB_TOKEN:-}" ]; then
+ask_token() {
 	echo "An EDB Repos 2.0 token is required to build the image."
 	read -p "Press enter to open a new browser window and log in to $PROFILE_URL to get the \"Repos 2.0 token\"..."
 	open "$PROFILE_URL" || xdg-open "$PROFILE_URL" || true
@@ -16,18 +16,47 @@ if [ -z "${EDB_TOKEN:-}" ]; then
 		exit 1
 	fi
 	export EDB_TOKEN
-fi
+}
 
 if ! docker info >/dev/null 2>&1; then
 	echo "Docker isn't running. Start Docker Desktop (or Rancher Desktop) and try again." >&2
 	exit 1
 fi
 
-docker compose up -d --build
+# The token is only needed to install the EDB packages. Once the image exists, that build step comes from the cache, so
+# ask only for a first build, or when a build without the token fails (for example after a change to that step).
+if [ -z "${EDB_TOKEN:-}" ] && ! docker image inspect aidb-in-the-box >/dev/null 2>&1; then
+	ask_token
+fi
+
+if ! docker compose build; then
+	if [ -n "${EDB_TOKEN:-}" ]; then
+		exit 1
+	fi
+	echo ""
+	echo "The build failed without a token; it probably has to download the EDB packages again."
+	ask_token
+	docker compose build
+fi
+docker compose up -d
+
+# Wait for the healthcheck in docker-compose.yml: the app answers and reaches the database.
+echo "Waiting for AI in the Box to start (the first start takes a few minutes)..."
+container="$(docker compose ps -q pg)"
+for _ in $(seq 1 180); do   # 15 minutes
+	case "$(docker inspect -f '{{.State.Status}} {{.State.Health.Status}}' "$container")" in
+		"running healthy") break ;;
+		running*) sleep 5 ;;
+		*) echo "The container stopped. See: docker compose logs pg" >&2; exit 1 ;;
+	esac
+done
+if [ "$(docker inspect -f '{{.State.Health.Status}}' "$container")" != healthy ]; then
+	echo "AI in the Box did not start within 15 minutes. See: docker compose logs pg" >&2
+	exit 1
+fi
 
 echo ""
 echo "AI in the Box: http://localhost:8650"
 echo "Jupyter:       open it from Run it in the app (it needs the token the app adds)"
 
-sleep 3
 open http://localhost:8650 || xdg-open http://localhost:8650 || true

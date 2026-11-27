@@ -307,13 +307,14 @@ def lineage(events):
 
 
 def _model_info(agent):
-    row = sql("SELECT a.model, m.provider, m.options::text FROM aidb.agents a LEFT JOIN aidb.models m ON m.name = a.model "
-              "WHERE a.name = %s", (agent,), quiet=True)[0]
+    """(AIDB model name, provider:model id) of the agent's model; monitor_feed.model_ids() is in docker/roles.sql."""
+    row = sql("SELECT a.model, mi.provider, mi.model_id FROM aidb.agents a "
+              "LEFT JOIN monitor_feed.model_ids() mi ON mi.model_name = a.model WHERE a.name = %s", (agent,),
+              quiet=True)[0]
     if not row:
         return None, None
-    name, provider, opts = row[0]
-    mv = re.search(r'model\\*"\s*:\s*\\*"([^"\\]+)', opts or "")
-    return name, f"{provider}:{mv.group(1)}" if mv else provider
+    name, provider, model_id = row[0]
+    return name, f"{provider}:{model_id}" if model_id else provider
 
 
 def log_event(role="demo_user", **ev):

@@ -7,17 +7,18 @@ import time
 import pandas as pd
 from flask import Blueprint, request
 from sqlalchemy import text
-from sqlalchemy.exc import SQLAlchemyError
 
-from .common import (api, db_error, execute, get_engine, query, records, relation_exists, reply, start_job)
+from .common import (api, db_error, db_role, execute, get_engine, query, records, relation_exists, reply,
+                     start_job)
 from .tokenboss_sql import *  # noqa: F401,F403  (SQL text and constants)
-from .tokenboss_sql import (AGENT_FILTER, CREATE_VIEW_SQL, DELETED_LABEL, GROUP_TITLES, HIGH_TOKENS_DEFAULT,  # noqa: F401
+from .tokenboss_sql import (AGENT_FILTER, CREATE_VIEW_SQL, VIEWS_COMMENT_SQL, VIEWS_VERSION, script, DELETED_LABEL, GROUP_TITLES, HIGH_TOKENS_DEFAULT,  # noqa: F401
                             MODEL_NAME, MODIFIER_NAME, MODIFY_TOOL_NAMES, REVIEW_TOOL_NAMES, REVIEWER_NAME,
                             REVIEWS_TABLE_SQL, SETUP_MODEL_SQL, SETUP_OBJECT_STATEMENTS, STEP_BY_KEY, STEPS,
                             USED_MODELS_SQL, VIEW_NAMES, fetch_litellm_prices, modifier_prompt, performance_sql,
                             reviewer_prompt, scorecard_sql, wildcard_to_ilike)
 
 bp = Blueprint("tokenboss", __name__, url_prefix="/api/tokenboss")
+db_role(bp, "monitor")  # reads every user's agent activity (docker/roles.sql)
 
 
 def numbers(df, ints, floats=None):
@@ -33,37 +34,49 @@ def fmt_time(t):
     return pd.Timestamp(t).strftime("%b %d %H:%M")
 
 
+VIEWS_STATE_SQL = """SELECT obj_description(to_regclass('monitor.task_stats'), 'pg_class') AS version,
+                           to_regclass('monitor.agent_config_history') IS NOT NULL AS set_up"""
+
+
+def create_objects(always=False):
+    """Create Token Boss's schema, tables and views (setup step 2), or with always=False only when monitor.task_stats is
+    missing or from another Token Boss version (VIEWS_VERSION): older views show only estimated tokens or, from before
+    monitor_feed (docker/roles.sql), only Token Boss's own actions. Before setup ran (its tables are missing) only
+    task_stats is created; once it ran, all of them, also after entrypoint.sh dropped old views for an AIDB update. One
+    transaction, under an advisory lock, so the first requests after an upgrade do not replace the views at once."""
+    with get_engine().connect() as c:
+        c.execute(text("SELECT pg_advisory_lock(hashtext('tokenboss-views'))"))
+        try:
+            state = c.execute(text(VIEWS_STATE_SQL)).mappings().first()
+            if not always and state["version"] == VIEWS_VERSION:
+                return
+            statements = (SETUP_OBJECT_STATEMENTS if always or state["set_up"]
+                          else ["CREATE SCHEMA IF NOT EXISTS monitor", CREATE_VIEW_SQL, VIEWS_COMMENT_SQL])
+            c.execute(text(script(statements)))  # one query string: one transaction
+        finally:
+            c.execute(text("SELECT pg_advisory_unlock(hashtext('tokenboss-views'))"))
+
+
 def ensure_view_if_needed():
-    """Create monitor.task_stats only if it does not exist (it is never replaced)."""
-    if relation_exists("monitor.task_stats"):
-        return
-    execute("CREATE SCHEMA IF NOT EXISTS monitor")
-    try:
-        execute(CREATE_VIEW_SQL)
-    except SQLAlchemyError:
-        if not relation_exists("monitor.task_stats"):  # ignore a race with another session
-            raise
+    if query(VIEWS_STATE_SQL).iloc[0]["version"] != VIEWS_VERSION:
+        create_objects()
 
 
 def monitor_state():
     """(ready, connection ok, connection error). Ready = the log, agents table and task view exist."""
     try:
         ensure_view_if_needed()
-        return all(relation_exists(n) for n in ("aidb_internal.action_log", "aidb.agents", "monitor.task_stats")), True, None
+        feed = query("SELECT to_regprocedure('monitor_feed.action_log()') IS NOT NULL AS ok").iloc[0]["ok"]
+        return bool(feed) and all(relation_exists(n) for n in ("aidb.agents", "monitor.task_stats")), True, None
     except Exception as e:  # noqa: BLE001
         return False, False, db_error(e)
 
 
 # ---------------------------------------------------------------- setup helpers
-def run_statements(statements):
-    for s in statements:
-        execute(s)
-
-
-def names_present(sql, names):
+def names_present(sql, names, params=None):
     """Which of `names` the status query finds; empty if the query cannot run (missing table)."""
     try:
-        return set(query(sql, {"n": names}).iloc[:, 0])
+        return set(query(sql, {"n": names, **(params or {})}).iloc[:, 0])
     except Exception:  # noqa: BLE001
         return set()
 
@@ -79,7 +92,11 @@ def present_now():
     return {
         "model": names_present("SELECT name FROM aidb.models WHERE name = ANY(:n)", [MODEL_NAME]),
         "objects": {n for n in VIEW_NAMES if safe_relation_exists(n)},
-        "tools": names_present("SELECT name FROM aidb.sql_tool_registry WHERE name = ANY(:n)",
+        # modify tools from an older Token Boss count as missing until step 4 runs: they wrote aidb.agents directly, and
+        # an older apply_agent_change replaced every occurrence of old_text (REPLACE, not OVERLAY)
+        "tools": names_present("SELECT name FROM aidb.sql_tool_registry WHERE name = ANY(:n) "
+                               "AND (name <> 'revert_agent' OR query_text LIKE '%aidb.update_agent%') "
+                               "AND (name <> 'apply_agent_change' OR query_text LIKE '%OVERLAY(%')",
                                REVIEW_TOOL_NAMES + MODIFY_TOOL_NAMES),
         "agents": names_present("SELECT name FROM aidb.agents WHERE name = ANY(:n)", [REVIEWER_NAME, MODIFIER_NAME]),
     }
@@ -93,7 +110,7 @@ def run_step_sql(step, api_key=None):
     if step["key"] == "model":
         execute(SETUP_MODEL_SQL, {"creds": json.dumps({"api_key": api_key})})
     elif step["key"] == "objects":
-        run_statements(SETUP_OBJECT_STATEMENTS)
+        create_objects(always=True)
     else:
         execute(step["sql"])
 
@@ -167,6 +184,20 @@ def setup_all():
     return reply({"ok": True, "job": start_job(setup_all_job, key).id})
 
 
+def token_estimates(source, where, params=None):
+    """How many of the tasks in `source` matching `where` fall back to estimated token counts (characters / 4)
+    because AIDB has no usable provider-reported usage for them, and why. The pages show it as a warning."""
+    df = query(f"SELECT token_note, COUNT(*) AS tasks FROM {source} WHERE {where} GROUP BY token_note", params)
+    df["tasks"] = pd.to_numeric(df["tasks"]).astype("int64")
+    est = df[df["token_note"].notna()]
+    # What Token Boss's own session sees: why AIDB may not be storing spans it can read
+    telemetry = query("""SELECT current_setting('aidb.otel_client', true) AS otel_client,
+                                current_setting('aidb.otel_client_storage_format', true) AS storage_format""")
+    return {"tasks": int(df["tasks"].sum()), "estimated": int(est["tasks"].sum()),
+            "reasons": [{"note": r.token_note, "tasks": int(r.tasks)} for r in est.itertuples()],
+            **telemetry.iloc[0].to_dict()}
+
+
 # ---------------------------------------------------------------- scorecard
 def modified_labels():
     """agent name -> text for the Modified column (changes recorded in the history)."""
@@ -191,8 +222,8 @@ def scorecard():
     since = bool(views_ok and a.get("since", "1") == "1")
     high = int(a.get("high") or HIGH_TOKENS_DEFAULT)
     df = query(scorecard_sql(since), {**params, "high_tokens": high})
-    df = numbers(df, ["tasks", "tool_errors", "compactions", "compaction_errors", "est_tokens_per_task"],
-                 ["avg_rounds"])
+    df = numbers(df, ["tasks", "tool_errors", "compactions", "compaction_errors", "tokens_per_task",
+                      "estimated_tasks"], ["avg_rounds"])
     df["avg_rounds"] = df["avg_rounds"].fillna(0)  # an agent with no tasks since its change
     df["slowest_s"] = pd.to_timedelta(df.pop("slowest")).dt.total_seconds().round(1).fillna(0)
     df["flags"] = df["flags"].fillna("").str.rstrip("; ")
@@ -201,8 +232,10 @@ def scorecard():
     df["can_review"] = df["agent_name"] != DELETED_LABEL
     df["modified"] = [labels.get(x) for x in df["agent_name"]]
     have = present_now()
+    tokens = token_estimates("monitor.recent_task_stats" if since else "monitor.task_stats",
+                             AGENT_FILTER.format(col="agent_name"), params)
     return reply({"ok": True, "ready": True, "views_ok": views_ok, "since": since, "rows": records(df),
-                  "flagged": int((df["flags"] != "").sum()),
+                  "flagged": int((df["flags"] != "").sum()), "tokens": tokens,
                   "reviewer_ok": REVIEWER_NAME in have["agents"], "modifier_ok": MODIFIER_NAME in have["agents"]})
 
 
@@ -257,7 +290,13 @@ def apply():
     b = request.get_json()
     if MODIFIER_NAME not in names_present("SELECT name FROM aidb.agents WHERE name = ANY(:n)", [MODIFIER_NAME]):
         return reply({"ok": False, "error": f"The modifier agent {MODIFIER_NAME} does not exist yet."})
-    return reply({"ok": True, "job": start_job(apply_job, b["agent"], b["text"], b.get("original") or b["text"]).id})
+    # One modifier run per agent at a time: its edits are computed from the instructions it read
+    args = (b["agent"], b["text"], b.get("original") or b["text"])
+    job = start_job(apply_job, *args, key=f"tokenboss-apply:{b['agent']}")
+    if job.args != args:
+        return reply({"ok": False, "error": f"Another recommendation for {b['agent']} is still being applied. "
+                                            "Try again when it has finished."})
+    return reply({"ok": True, "job": job.id})
 
 
 # ---------------------------------------------------------------- performance
@@ -268,22 +307,25 @@ def performance():
     if not ready:
         return reply({"ok": True, "ready": False})
     include_single = request.args.get("include_single") == "1"
-    costs_ok = relation_exists("monitor.model_prices") and relation_exists("monitor.model_ids")
+    costs_ok = relation_exists("monitor.model_prices")
     try:
         perf = query(performance_sql(costs_ok))
     except Exception as e:  # noqa: BLE001
         msg = ("The history table does not exist yet. Run the steps on the Setup tab."
                if "agent_config_history" in str(e) else f"Could not load the performance data: {db_error(e)}")
         return reply({"ok": True, "ready": True, "info": msg})
-    perf = numbers(perf, ["tasks", "avg_input_tokens", "avg_output_tokens", "avg_total_tokens"], ["avg_rounds"])
+    perf = numbers(perf, ["tasks", "estimated_tasks", "avg_input_tokens", "avg_output_tokens", "avg_total_tokens"],
+                   ["avg_rounds"])
     perf["pct_change"] = pd.to_numeric(perf["pct_change"])
     perf["avg_cost"] = pd.to_numeric(perf["avg_cost"])
     if not include_single:
         perf = perf[perf.groupby("agent_name")["version"].transform("count") > 1]
     unpriced = sorted({str(m) for m in perf.loc[perf["avg_cost"].isna() & perf["model_id"].notna(),
                                                 "model_id"].dropna()}) if costs_ok else []
+    tokens = token_estimates("monitor.task_stats", "agent_name = ANY(:agents)",
+                             {"agents": sorted(perf["agent_name"].unique())})
     return reply({"ok": True, "ready": True, "costs_ok": costs_ok, "unpriced": unpriced, "rows": records(perf),
-                  "agents": int(perf["agent_name"].nunique())})
+                  "agents": int(perf["agent_name"].nunique()), "tokens": tokens})
 
 
 # ---------------------------------------------------------------- history
@@ -309,19 +351,25 @@ def restore_config(agent, target, reason):
         current = c.execute(text("SELECT to_jsonb(a) FROM aidb.agents a WHERE a.name = :a"), {"a": agent}).scalar()
         if current is None:
             raise ValueError(f"Agent {agent} no longer exists.")
+        tools = cfg_tools(target)
         history_id = c.execute(
             text("INSERT INTO monitor.agent_config_history (agent_name, action, old_config, new_config, reason) "
                  "VALUES (:a, 'revert', CAST(:cur AS jsonb), CAST(:new AS jsonb), :r) RETURNING history_id"),
             {"a": agent, "cur": json.dumps(current), "r": reason,
-             "new": json.dumps({"instructions": cfg_instructions(target), "tools": target.get("tools")})}).scalar()
-        c.execute(text("UPDATE aidb.agents SET instructions = :ins, tools = :tools, updated_at = now() WHERE name = :a"),
-                  {"a": agent, "ins": cfg_instructions(target),
-                   "tools": cfg_tools(target) if isinstance(target.get("tools"), list) else None})
+             "new": json.dumps({"instructions": cfg_instructions(target), "tools": tools})}).scalar()
+        # Unchanged tools are left out, so a tool deleted since then does not block restoring the instructions
+        error = c.execute(text("SELECT error FROM aidb.update_agent(:a, instructions => :ins, "
+                               "tools => CAST(:tools AS text[]))"),
+                          {"a": agent, "ins": cfg_instructions(target),
+                           "tools": None if tools == cfg_tools(current) else tools}).scalar()
+        if error:
+            raise ValueError(error)  # rolls the history row back too
     return history_id
 
 
 def before_after(tasks, start, middle, end):
-    """(tasks, estimated tokens per task, tool errors) for the tasks before and after a change."""
+    """(tasks, input tokens per task, tool errors, tasks with estimated tokens) for the tasks before and after a
+    change."""
     def stats(lo, hi):
         part = tasks
         if lo is not None:
@@ -329,7 +377,8 @@ def before_after(tasks, start, middle, end):
         if hi is not None:
             part = part[part["started_at"] < hi]
         n = len(part)
-        return n, (int(part["est_input_tokens"].mean()) if n else None), (int(part["tool_errors"].sum()) if n else None)
+        return (n, (int(part["input_tokens"].mean()) if n else None), (int(part["tool_errors"].sum()) if n else None),
+                int((~part["tokens_reported"].astype(bool)).sum()))
     return stats(start, middle), stats(middle, end)
 
 
@@ -390,20 +439,22 @@ def history():
                                                     "instructions": cfg_instructions(current)},
            "changes": []}
     if not hist.empty:
-        tasks = query("SELECT started_at, est_input_tokens, tool_errors FROM monitor.task_stats WHERE agent_name = :a",
-                      {"a": agent})
+        tasks = query("SELECT started_at, input_tokens, tool_errors, tokens_reported FROM monitor.task_stats "
+                      "WHERE agent_name = :a", {"a": agent})
         tasks["started_at"] = pd.to_datetime(tasks["started_at"], utc=True)
-        tasks["est_input_tokens"] = pd.to_numeric(tasks["est_input_tokens"])
+        tasks["input_tokens"] = pd.to_numeric(tasks["input_tokens"])
+        out["tokens"] = token_estimates("monitor.task_stats", "agent_name = :a", {"a": agent})
         tasks["tool_errors"] = pd.to_numeric(tasks["tool_errors"])
         for i in range(len(hist) - 1, -1, -1):  # newest first
             start = times[i - 1] if i > 0 else None
             end = times[i + 1] if i + 1 < len(times) else None
-            (t_b, tok_b, err_b), (t_a, tok_a, err_a) = before_after(tasks, start, times[i], end)
+            (t_b, tok_b, err_b, est_b), (t_a, tok_a, err_a, est_a) = before_after(tasks, start, times[i], end)
             row = hist.iloc[i]
             out["changes"].append({"id": int(row["history_id"]), "when": fmt_time(row["changed_at"]),
                                    "action": "Undo" if row["action"] == "revert" else "Change",
                                    "reason": row["reason"] or "", "tasks": arrow(t_b, t_a),
-                                   "tokens": arrow(tok_b, tok_a), "errors": arrow(err_b, err_a)})
+                                   "tokens": arrow(tok_b, tok_a), "estimated_tasks": est_b + est_a,
+                                   "errors": arrow(err_b, err_a)})
     try:
         r = query("SELECT reviewed_at, recommendation, edited_text, applied_at FROM monitor.agent_reviews "
                   "WHERE agent_name = :a AND applied ORDER BY reviewed_at DESC LIMIT 10", {"a": agent})
@@ -488,7 +539,7 @@ def price_state():
 @bp.get("/prices")
 @api
 def prices():
-    if not (safe_relation_exists("monitor.model_prices") and safe_relation_exists("monitor.model_ids")):
+    if not safe_relation_exists("monitor.model_prices"):
         return reply({"ok": True, "available": False})
     p, used, unpriced = price_state()
     return reply({"ok": True, "available": True, "rows": records(p), "used": used, "unpriced": unpriced})

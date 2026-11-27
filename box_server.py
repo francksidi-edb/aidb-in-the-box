@@ -43,6 +43,9 @@ EXPOSED = HOST not in ("127.0.0.1", "localhost", "::1")
 NO_AUTH = os.environ.get("AIBOX_NO_AUTH", "") not in ("", "0")   # testing only: network mode without a password
 AUTH_ON = EXPOSED and not NO_AUTH
 PASSWORD = os.environ.get("AIBOX_PASSWORD", "") or (secrets.token_urlsafe(12) if AUTH_ON else "")
+# The AIDB release the notebooks and apps were last tested with. AIDB is not pinned in the image, so the status page
+# warns when the installed major.minor version differs. Raise it after testing a new release.
+TESTED_AIDB_VERSION = os.environ.get("AIBOX_TESTED_AIDB_VERSION") or "7.10.0"
 ALLOWED_HOSTS = set(LOCAL) | {h.strip().lower() for h in os.environ.get("AIBOX_ALLOWED_HOSTS", "").split(",") if h.strip()}
 
 
@@ -135,6 +138,13 @@ def jupyter():
     return jsonify({"token": os.environ.get("JUPYTER_TOKEN", "")})
 
 
+@app.get("/api/health")
+def health():
+    """For the container healthcheck: 200 once the app answers and reaches the database, else 503."""
+    ok, _ = psql("select 1", timeout=5)
+    return jsonify({"ok": ok}), (200 if ok else 503)
+
+
 @app.get("/api/status")
 def status():
     conn = {k: os.environ.get(k, "") or ("(socket)" if k == "PGHOST" else "")
@@ -151,14 +161,21 @@ def status():
     ok, rows = psql("select extname, extversion from pg_extension where extname in (%s)"
                     % ",".join("'%s'" % w for w in wanted))
     installed = {r[0]: r[1] for r in rows} if ok else {}
-    ok2, avail = psql("select name from pg_available_extensions where name in (%s)"
+    ok2, avail = psql("select name, default_version from pg_available_extensions where name in (%s)"
                       % ",".join("'%s'" % w for w in wanted))
-    available = {r[0] for r in avail} if ok2 else set()
+    available = {r[0]: r[1] for r in avail} if ok2 else {}
+    # update_pending: the installed package is newer than the extension's SQL objects in the database (the entrypoint
+    # runs ALTER EXTENSION ... UPDATE on every start, so in the container that update failed)
     out["extensions"] = [{"name": w, "installed": installed.get(w),
-                          "available": w in available or w in installed} for w in wanted]
+                          "available": w in available or w in installed,
+                          "library": available.get(w),
+                          "update_pending": w in installed and w in available and installed[w] != available[w]}
+                         for w in wanted]
     ok, rows = psql("select to_regclass('support.tickets') is not null")   # sample data from docker/bootstrap.sql
     out["demo_data"] = bool(ok and rows and rows[0][0] == "t")
     if "aidb" in installed:
+        out["aidb_version"] = {"installed": installed["aidb"], "tested": TESTED_AIDB_VERSION,
+                               "compatible": installed["aidb"].split(".")[:2] == TESTED_AIDB_VERSION.split(".")[:2]}
         ok, rows = psql("select (select count(*) from aidb.models), (select count(*) from aidb.agents)")
         if ok and rows:
             out["aidb_counts"] = {"models": int(rows[0][0]), "agents": int(rows[0][1])}
